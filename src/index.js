@@ -5,7 +5,6 @@ import { dirname, join } from 'path';
 import { readdirSync } from 'fs';
 import { readFile, writeFile } from 'fs/promises';
 import { Player } from 'discord-player';
-import { YoutubeiExtractor } from 'discord-player-youtubei';
 import { connectDB } from './database/connection.js';
 
 config();
@@ -36,9 +35,17 @@ const player = new Player(client, {
   }
 });
 
-// Registrar extractores de música
-player.extractors.register(YoutubeiExtractor, {});
-player.extractors.loadDefault();
+// Registrar extractores de música (usa play-dl automáticamente)
+await player.extractors.loadDefault((ext) => ext !== 'YouTubeExtractor');
+
+// Configurar manejo de errores del reproductor
+player.events.on('error', (queue, error) => {
+  console.error(`Error en el reproductor [${queue.guild.name}]:`, error);
+});
+
+player.events.on('playerError', (queue, error) => {
+  console.error(`Error reproduciendo [${queue.guild.name}]:`, error);
+});
 
 // Colecciones para comandos y cooldowns
 client.commands = new Collection();
