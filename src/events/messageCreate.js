@@ -3,6 +3,7 @@ import OpenAI from 'openai';
 import { readFile } from 'fs/promises';
 import { join, dirname } from 'path';
 import { fileURLToPath } from 'url';
+import { updateUserXP, saveMessage } from '../database/helpers.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -36,6 +37,23 @@ export default {
   async execute(message) {
     // Ignorar mensajes de bots
     if (message.author.bot) return;
+    
+    // Guardar mensaje en MongoDB
+    await saveMessage({
+      messageId: message.id,
+      guildId: message.guildId,
+      channelId: message.channelId,
+      userId: message.author.id,
+      username: message.author.tag,
+      content: message.content,
+      attachments: message.attachments.map(a => ({
+        url: a.url,
+        name: a.name,
+        size: a.size
+      })),
+      embeds: message.embeds.length,
+      mentions: message.mentions.users.map(u => u.id)
+    });
     
     // Sistema de XP/Leveling
     await handleLeveling(message);
@@ -219,35 +237,55 @@ async function handleLeveling(message) {
   
   message.client.cooldowns.set(cooldownKey, Date.now());
   
-  const userId = `${message.guildId}-${message.author.id}`;
-  const userData = message.client.data.levels.get(userId) || { xp: 0, level: 0, messages: 0 };
-  
   // Ganar XP aleatorio entre 15-25
   const xpGained = Math.floor(Math.random() * 11) + 15;
-  userData.xp += xpGained;
-  userData.messages += 1;
   
-  // Calcular XP necesario para el siguiente nivel
-  const xpNeeded = calculateXPForLevel(userData.level + 1);
+  // Actualizar en MongoDB
+  const result = await updateUserXP(
+    message.guildId,
+    message.author.id,
+    xpGained,
+    message.author.tag
+  );
   
-  // Verificar si subió de nivel
-  if (userData.xp >= xpNeeded) {
-    userData.level += 1;
-    userData.xp = userData.xp - xpNeeded;
-    
-    // Mensaje de nivel subido
-    const { EmbedBuilder } = await import('discord.js');
+  // Si MongoDB está disponible y el usuario subió de nivel
+  if (result && result.leveledUp) {
     const embed = new EmbedBuilder()
       .setColor('#FFD700')
       .setTitle('🎉 ¡Nivel Subido!')
-      .setDescription(`${message.author} ha alcanzado el **Nivel ${userData.level}**!`)
+      .setDescription(`${message.author} ha alcanzado el **Nivel ${result.user.level}**!`)
       .setThumbnail(message.author.displayAvatarURL({ dynamic: true }))
       .setTimestamp();
     
     await message.channel.send({ embeds: [embed] });
   }
   
-  message.client.data.levels.set(userId, userData);
+  // Fallback: guardar en memoria si MongoDB no está disponible
+  if (!result) {
+    const userId = `${message.guildId}-${message.author.id}`;
+    const userData = message.client.data.levels.get(userId) || { xp: 0, level: 0, messages: 0 };
+    
+    userData.xp += xpGained;
+    userData.messages += 1;
+    
+    const xpNeeded = calculateXPForLevel(userData.level + 1);
+    
+    if (userData.xp >= xpNeeded) {
+      userData.level += 1;
+      userData.xp = userData.xp - xpNeeded;
+      
+      const embed = new EmbedBuilder()
+        .setColor('#FFD700')
+        .setTitle('🎉 ¡Nivel Subido!')
+        .setDescription(`${message.author} ha alcanzado el **Nivel ${userData.level}**!`)
+        .setThumbnail(message.author.displayAvatarURL({ dynamic: true }))
+        .setTimestamp();
+      
+      await message.channel.send({ embeds: [embed] });
+    }
+    
+    message.client.data.levels.set(userId, userData);
+  }
 }
 
 function calculateXPForLevel(level) {

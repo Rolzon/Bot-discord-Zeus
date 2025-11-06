@@ -1,4 +1,5 @@
 import { SlashCommandBuilder, PermissionFlagsBits, EmbedBuilder } from 'discord.js';
+import { addWarning } from '../../database/helpers.js';
 
 export default {
   data: new SlashCommandBuilder()
@@ -27,19 +28,29 @@ export default {
       return interaction.reply({ content: '❌ No puedes advertirte a ti mismo.', ephemeral: true });
     }
     
-    // Obtener advertencias del usuario
-    const userId = `${interaction.guild.id}-${target.id}`;
-    const warnings = interaction.client.data.warnings.get(userId) || [];
+    // Agregar advertencia en MongoDB
+    let warnings = await addWarning(
+      interaction.guild.id,
+      target.id,
+      reason,
+      interaction.user.tag,
+      target.tag
+    );
     
-    // Agregar nueva advertencia
-    warnings.push({
-      reason: reason,
-      moderator: interaction.user.tag,
-      timestamp: Date.now()
-    });
-    
-    interaction.client.data.warnings.set(userId, warnings);
-    await interaction.client.data.save();
+    // Fallback a memoria si MongoDB no está disponible
+    if (!warnings) {
+      const userId = `${interaction.guild.id}-${target.id}`;
+      warnings = interaction.client.data.warnings.get(userId) || [];
+      
+      warnings.push({
+        reason: reason,
+        moderator: interaction.user.tag,
+        timestamp: Date.now()
+      });
+      
+      interaction.client.data.warnings.set(userId, warnings);
+      await interaction.client.data.save();
+    }
     
     const warningCount = warnings.length;
     

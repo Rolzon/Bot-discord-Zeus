@@ -6,6 +6,7 @@ import { readdirSync } from 'fs';
 import { readFile, writeFile } from 'fs/promises';
 import { Player } from 'discord-player';
 import { YoutubeiExtractor } from 'discord-player-youtubei';
+import { connectDB } from './database/connection.js';
 
 config();
 
@@ -122,10 +123,13 @@ for (const file of eventFiles) {
   console.log(`✅ Evento cargado: ${event.default.name}`);
 }
 
-// Cargar datos persistentes
+// Conectar a MongoDB
+await connectDB();
+
+// Cargar datos persistentes (fallback si MongoDB no está disponible)
 await client.data.load();
 
-// Guardar datos cada 5 minutos
+// Guardar datos cada 5 minutos (fallback)
 setInterval(() => {
   client.data.save();
 }, 5 * 60 * 1000);

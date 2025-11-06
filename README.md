@@ -89,12 +89,21 @@ Un bot **multi-propósito** completo de Discord con integración de GPT-3.5-turb
 - Información del servidor
 - Contador de miembros
 
+### 🗄️ Base de Datos MongoDB
+- **Almacenamiento persistente** - Todos los datos guardados en la nube
+- **Escalabilidad** - Soporta servidores grandes sin problemas
+- **Historial completo** - Mensajes, usuarios, niveles, advertencias
+- **Análisis de datos** - Consultas y reportes avanzados
+- **Backup automático** - Datos seguros y recuperables
+- **Modo fallback** - Funciona sin MongoDB usando JSON local
+
 ## 📋 Requisitos
 
 - Node.js 18.0.0 o superior
 - Una cuenta de Discord
 - Token de bot de Discord
 - API Key de OpenAI
+- MongoDB Atlas (opcional pero recomendado)
 - FFmpeg (para música)
 - 512MB RAM mínimo (1GB recomendado)
 
@@ -145,7 +154,18 @@ npm install
    DISCORD_TOKEN=tu_token_aqui
    OPENAI_API_KEY=tu_api_key_aqui
    CLIENT_ID=tu_client_id_aqui
+   MONGODB_URI=tu_mongodb_uri_aqui  # Opcional pero recomendado
    ```
+
+#### Configurar MongoDB (Opcional pero Recomendado):
+Para almacenar datos de forma persistente y escalable:
+1. Ve a [MongoDB Atlas](https://www.mongodb.com/cloud/atlas)
+2. Crea una cuenta gratuita y un cluster
+3. Obtén tu URI de conexión
+4. Agrégalo a tu archivo `.env`
+5. **Ver guía completa**: [DATABASE-SETUP.md](./DATABASE-SETUP.md)
+
+**Nota**: Si no configuras MongoDB, el bot funcionará con almacenamiento local en JSON.
 
 ### 4. Configurar el bot (opcional)
 

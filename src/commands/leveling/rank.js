@@ -1,4 +1,5 @@
 import { SlashCommandBuilder, EmbedBuilder } from 'discord.js';
+import { getOrCreateUser, getLeaderboard } from '../../database/helpers.js';
 
 export default {
   data: new SlashCommandBuilder()
@@ -11,18 +12,34 @@ export default {
   
   async execute(interaction) {
     const target = interaction.options.getUser('usuario') || interaction.user;
-    const userId = `${interaction.guildId}-${target.id}`;
-    const userData = interaction.client.data.levels.get(userId) || { xp: 0, level: 0, messages: 0 };
+    
+    // Intentar obtener de MongoDB
+    let userData = await getOrCreateUser(interaction.guildId, target.id, target.tag);
+    
+    // Fallback a memoria si MongoDB no está disponible
+    if (!userData) {
+      const userId = `${interaction.guildId}-${target.id}`;
+      userData = interaction.client.data.levels.get(userId) || { xp: 0, level: 0, messages: 0 };
+    }
     
     const xpNeeded = calculateXPForLevel(userData.level + 1);
     const progress = Math.floor((userData.xp / xpNeeded) * 100);
     
-    // Calcular ranking
-    const allUsers = Array.from(interaction.client.data.levels.entries())
-      .filter(([key]) => key.startsWith(interaction.guildId))
-      .sort((a, b) => b[1].xp - a[1].xp);
+    // Calcular ranking desde MongoDB o memoria
+    let rank = 0;
+    const leaderboard = await getLeaderboard(interaction.guildId, 100);
     
-    const rank = allUsers.findIndex(([key]) => key === userId) + 1;
+    if (leaderboard.length > 0) {
+      rank = leaderboard.findIndex(u => u.userId === target.id) + 1;
+    } else {
+      // Fallback a memoria
+      const allUsers = Array.from(interaction.client.data.levels.entries())
+        .filter(([key]) => key.startsWith(interaction.guildId))
+        .sort((a, b) => b[1].xp - a[1].xp);
+      
+      const userId = `${interaction.guildId}-${target.id}`;
+      rank = allUsers.findIndex(([key]) => key === userId) + 1;
+    }
     
     const embed = new EmbedBuilder()
       .setColor(interaction.client.config.embedColor)
