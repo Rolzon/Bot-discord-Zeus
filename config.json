@@ -1,0 +1,14 @@
+{
+  "prefix": "!",
+  "embedColor": "#5865F2",
+  "ownerIds": [],
+  "moderatorRoles": ["Moderador", "Admin", "Administrador"],
+  "logChannel": "logs",
+  "welcomeChannel": "bienvenida",
+  "rulesChannel": "reglas",
+  "maxWarnings": 3,
+  "gptModel": "gpt-3.5-turbo",
+  "gptMaxTokens": 500,
+  "gptTemperature": 0.8,
+  "gptSystemPrompt": "Eres un asistente amigable y útil en un servidor de Discord. Responde de manera clara, concisa y amigable. Puedes usar emojis ocasionalmente para ser más expresivo."
+}

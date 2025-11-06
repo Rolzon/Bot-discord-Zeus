@@ -1,0 +1,60 @@
+{
+  "company": {
+    "name": "Dragon Hosting",
+    "website": "https://dragonhosting.lat/",
+    "description": "Hosting de videojuegos profesional en Latinoamérica"
+  },
+  "faqs": [
+    {
+      "keywords": ["precio", "costo", "cuanto cuesta", "planes", "paquetes"],
+      "answer": "Dragon Hosting ofrece varios planes de hosting para videojuegos. Puedes ver todos nuestros precios y paquetes en https://dragonhosting.lat/. Tenemos opciones para todos los presupuestos, desde servidores pequeños hasta dedicados de alto rendimiento."
+    },
+    {
+      "keywords": ["juegos", "soportados", "que juegos", "minecraft", "rust", "ark"],
+      "answer": "Dragon Hosting soporta una amplia variedad de juegos populares incluyendo Minecraft, Rust, ARK, FiveM, CS:GO, Valheim, y muchos más. Visita nuestra página web para ver la lista completa de juegos soportados."
+    },
+    {
+      "keywords": ["ubicacion", "servidores", "donde", "latencia", "ping"],
+      "answer": "Nuestros servidores están ubicados estratégicamente en Latinoamérica para ofrecer la mejor latencia posible. Contamos con centros de datos de alta calidad que garantizan un ping bajo y conexión estable."
+    },
+    {
+      "keywords": ["soporte", "ayuda", "problema", "ticket", "contacto"],
+      "answer": "Nuestro equipo de soporte está disponible 24/7 para ayudarte. Puedes crear un ticket en nuestro Discord usando el comando de tickets, o contactarnos directamente a través de nuestra página web https://dragonhosting.lat/"
+    },
+    {
+      "keywords": ["panel", "control", "acceso", "configurar"],
+      "answer": "Dragon Hosting utiliza un panel de control intuitivo y fácil de usar. Una vez que contrates tu servidor, recibirás las credenciales de acceso por correo. Desde el panel podrás gestionar tu servidor, instalar mods, hacer backups y mucho más."
+    },
+    {
+      "keywords": ["pago", "metodos", "como pagar", "paypal", "tarjeta"],
+      "answer": "Aceptamos múltiples métodos de pago para tu comodidad: tarjetas de crédito/débito, PayPal, transferencias bancarias y otros métodos locales de Latinoamérica. Todos los pagos son procesados de forma segura."
+    },
+    {
+      "keywords": ["uptime", "disponibilidad", "caidas", "estabilidad"],
+      "answer": "Dragon Hosting garantiza un 99.9% de uptime. Nuestros servidores están monitoreados 24/7 y contamos con sistemas de respaldo automático para asegurar que tu servidor esté siempre disponible para tus jugadores."
+    },
+    {
+      "keywords": ["backup", "respaldo", "copias", "seguridad"],
+      "answer": "Todos nuestros planes incluyen backups automáticos diarios. Además, puedes crear backups manuales cuando quieras desde el panel de control. Tus datos están siempre seguros con nosotros."
+    },
+    {
+      "keywords": ["mods", "plugins", "personalizar", "instalar"],
+      "answer": "¡Por supuesto! Tienes acceso completo FTP para instalar los mods y plugins que desees. También ofrecemos instalación automática de los mods más populares con un solo clic desde el panel."
+    },
+    {
+      "keywords": ["ddos", "proteccion", "ataques", "seguridad"],
+      "answer": "Todos nuestros servidores incluyen protección DDoS avanzada sin costo adicional. Tu servidor estará protegido contra ataques y podrás jugar tranquilo sabiendo que tu comunidad está segura."
+    }
+  ],
+  "custom_responses": [
+    {
+      "trigger": "bienvenida",
+      "response": "¡Bienvenido a Dragon Hosting! 🐉 Somos tu mejor opción para hosting de videojuegos en Latinoamérica. ¿En qué puedo ayudarte hoy?"
+    },
+    {
+      "trigger": "despedida",
+      "response": "¡Gracias por contactar a Dragon Hosting! Si tienes más preguntas, no dudes en escribir. ¡Nos vemos en el juego! 🎮"
+    }
+  ],
+  "instructions": "IMPORTANTE: Cuando respondas preguntas sobre Dragon Hosting, usa la información de esta base de conocimiento de manera natural. No copies y pegues las respuestas exactas, sino úsalas como referencia para dar respuestas conversacionales y amigables. Siempre menciona el sitio web https://dragonhosting.lat/ cuando sea relevante. Sé profesional pero cercano, como un miembro del equipo de soporte."
+}
