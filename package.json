@@ -2,11 +2,11 @@
   "name": "discord-super-bot",
   "version": "2.0.0",
   "description": "Bot multi-propósito completo de Discord estilo Drako Bot con IA GPT-3.5-turbo, música, tickets, sorteos, niveles, backups y anti-raid",
-  "main": "src/index.js",
+  "main": "index.js",
   "type": "module",
   "scripts": {
-    "start": "node src/index.js",
-    "dev": "node --watch src/index.js"
+    "start": "node index.js",
+    "dev": "node --watch index.js"
   },
   "keywords": ["discord", "bot", "gpt", "moderation", "admin", "music", "tickets", "giveaways", "leveling", "anti-raid", "drako"],
   "author": "",
