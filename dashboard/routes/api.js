@@ -415,12 +415,117 @@ router.get('/guild/:guildId/logs', ensureGuildAdmin, async (req, res) => {
         timestamp: new Date(Date.now() - 60000),
         details: 'Eliminó un mensaje en #general'
       }
-    ];
+    ].slice(0, limit);
 
     res.json(logs);
   } catch (error) {
     console.error('Error obteniendo logs:', error);
     res.status(500).json({ error: 'Error obteniendo logs' });
+  }
+});
+
+// =====================
+//  Gestionar sorteos
+// =====================
+
+// Nota: por ahora estos datos se mantienen solo en memoria a nivel de proceso.
+// En producción real se debería usar una base de datos.
+const guildGiveawaysCache = new Map(); // guildId => { giveaways: [], stats: { ... } }
+
+// Listar sorteos
+router.get('/guild/:guildId/giveaways', ensureGuildAdmin, async (req, res) => {
+  try {
+    const guildId = req.params.guildId;
+
+    if (!guildGiveawaysCache.has(guildId)) {
+      guildGiveawaysCache.set(guildId, {
+        giveaways: [],
+        stats: { active: 0, completed: 0, participants: 0 }
+      });
+    }
+
+    const data = guildGiveawaysCache.get(guildId);
+
+    res.json({
+      giveaways: data.giveaways,
+      active: data.stats.active,
+      completed: data.stats.completed,
+      participants: data.stats.participants
+    });
+  } catch (error) {
+    console.error('Error obteniendo sorteos:', error);
+    res.status(500).json({ error: 'Error obteniendo sorteos' });
+  }
+});
+
+// Crear sorteo (simulado)
+router.post('/guild/:guildId/giveaways/create', ensureGuildAdmin, async (req, res) => {
+  try {
+    const guildId = req.params.guildId;
+    const { prize, duration, winners } = req.body;
+
+    if (!prize) {
+      return res.status(400).json({ error: 'El premio es obligatorio' });
+    }
+
+    const durationMs = (parseInt(duration) || 60) * 60 * 1000;
+    const endsAt = new Date(Date.now() + durationMs);
+
+    if (!guildGiveawaysCache.has(guildId)) {
+      guildGiveawaysCache.set(guildId, {
+        giveaways: [],
+        stats: { active: 0, completed: 0, participants: 0 }
+      });
+    }
+
+    const data = guildGiveawaysCache.get(guildId);
+
+    const giveaway = {
+      id: Date.now().toString(),
+      prize,
+      winners: parseInt(winners) || 1,
+      endsAt,
+      participants: 0,
+      active: true
+    };
+
+    data.giveaways.push(giveaway);
+    data.stats.active = data.giveaways.filter(g => g.active).length;
+
+    res.json({ success: true, giveaway });
+  } catch (error) {
+    console.error('Error creando sorteo:', error);
+    res.status(500).json({ error: 'Error creando sorteo' });
+  }
+});
+
+// Finalizar sorteo (simulado)
+router.post('/guild/:guildId/giveaways/:id/end', ensureGuildAdmin, async (req, res) => {
+  try {
+    const guildId = req.params.guildId;
+    const { id } = req.params;
+
+    if (!guildGiveawaysCache.has(guildId)) {
+      return res.status(404).json({ error: 'No hay sorteos para este servidor' });
+    }
+
+    const data = guildGiveawaysCache.get(guildId);
+    const giveaway = data.giveaways.find(g => g.id === id);
+
+    if (!giveaway) {
+      return res.status(404).json({ error: 'Sorteo no encontrado' });
+    }
+
+    giveaway.active = false;
+    data.stats.active = data.giveaways.filter(g => g.active).length;
+    data.stats.completed = data.giveaways.filter(g => !g.active).length;
+
+    // Aquí se podrían elegir ganadores reales si hubiera lista de participantes
+
+    res.json({ success: true, giveaway });
+  } catch (error) {
+    console.error('Error finalizando sorteo:', error);
+    res.status(500).json({ error: 'Error finalizando sorteo' });
   }
 });
 
