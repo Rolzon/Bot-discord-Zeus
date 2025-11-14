@@ -430,7 +430,7 @@
             </button>
             
             <a class="navbar-brand" href="/dashboard">
-                <i class="fas fa-robot me-2"></i>Zeus System Dashboard
+                Panel de control
             </a>
             
             <div class="navbar-nav ms-auto d-flex align-items-center">
@@ -483,10 +483,8 @@
             <% if (user && typeof guild !== 'undefined' && guild) { %>
             <nav class="col-lg-2 sidebar" id="sidebar">
                 <div class="p-3">
-                    <div class="text-center mb-4">
-                        <img src="<%= guild.iconURL() || '/images/default-guild.png' %>" 
-                             alt="<%= guild.name %>" class="guild-icon mb-2">
-                        <h6 class="text-white"><%= guild.name %></h6>
+                    <div class="text-center mb-3">
+                        <h6 class="fw-semibold" style="color: var(--text-primary);"><%= guild.name %></h6>
                     </div>
                     
                     <ul class="nav flex-column">
