@@ -12,18 +12,14 @@
                 </p>
                 
                 ${user ? `
-                    <a href="/dashboard" class="btn btn-primary btn-lg me-3">
+                    <a href="/dashboard" class="btn btn-primary btn-lg">
                         <i class="fas fa-tachometer-alt me-2"></i>Ir al Dashboard
                     </a>
                 ` : `
-                    <a href="/auth/discord" class="btn btn-primary btn-lg me-3">
+                    <a href="/auth/discord" class="btn btn-primary btn-lg">
                         <i class="fab fa-discord me-2"></i>Iniciar Sesión con Discord
                     </a>
                 `}
-                
-                <a href="#features" class="btn btn-outline-primary btn-lg">
-                    <i class="fas fa-info-circle me-2"></i>Ver Características
-                </a>
             </div>
         </div>
     </div>
@@ -204,6 +200,13 @@
         background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
         color: white !important;
         margin-top: -20px;
+    }
+    
+    /* Hero a ancho completo sin espacios laterales */
+    .hero-section .container {
+        max-width: 100%;
+        padding-left: 0;
+        padding-right: 0;
     }
     
     .hero-section h1,
