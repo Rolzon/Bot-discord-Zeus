@@ -12,31 +12,180 @@
     </a>
 </div>
 
-<div class="row">
+<!-- Reproductor Actual -->
+<div class="row mb-4">
     <div class="col-md-12">
         <div class="card">
-            <div class="card-header">
-                <h5 class="mb-0">
-                    <i class="fas fa-play-circle me-2"></i>
-                    Reproductor de Música
-                </h5>
-            </div>
             <div class="card-body">
-                <div class="alert alert-info">
-                    <i class="fas fa-info-circle me-2"></i>
-                    Panel de control de música en desarrollo. Próximamente podrás controlar el reproductor desde aquí.
+                <div id="nowPlaying" class="text-center py-4">
+                    <i class="fas fa-music fa-3x text-muted mb-3"></i>
+                    <p class="text-muted">No hay música reproduciéndose</p>
                 </div>
-                
-                <h6 class="mb-3">Funciones próximamente:</h6>
-                <ul>
-                    <li>Ver cola de reproducción actual</li>
-                    <li>Controlar reproducción (play, pause, skip)</li>
-                    <li>Gestionar volumen y configuración</li>
-                    <li>Historial de canciones reproducidas</li>
-                    <li>Estadísticas de uso</li>
-                </ul>
+                <div id="playerControls" class="text-center mt-3" style="display: none;">
+                    <div class="btn-group" role="group">
+                        <button class="btn btn-outline-secondary" onclick="previousTrack()">
+                            <i class="fas fa-step-backward"></i>
+                        </button>
+                        <button class="btn btn-outline-primary" id="playPauseBtn" onclick="togglePlayPause()">
+                            <i class="fas fa-pause"></i>
+                        </button>
+                        <button class="btn btn-outline-secondary" onclick="skipTrack()">
+                            <i class="fas fa-step-forward"></i>
+                        </button>
+                        <button class="btn btn-outline-danger" onclick="stopMusic()">
+                            <i class="fas fa-stop"></i>
+                        </button>
+                    </div>
+                    <div class="mt-3">
+                        <label>Volumen: <span id="volumeValue">50</span>%</label>
+                        <input type="range" class="form-range" id="volumeSlider" min="0" max="100" value="50" onchange="setVolume(this.value)">
+                    </div>
+                </div>
             </div>
         </div>
     </div>
 </div>
-`, script: `` }) %>
+
+<!-- Cola de Reproducción -->
+<div class="row">
+    <div class="col-md-12">
+        <div class="card">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h5 class="mb-0">
+                    <i class="fas fa-list me-2"></i>
+                    Cola de Reproducción
+                </h5>
+                <div>
+                    <button class="btn btn-sm btn-danger" onclick="clearQueue()">
+                        <i class="fas fa-trash me-1"></i>Limpiar Cola
+                    </button>
+                    <button class="btn btn-sm btn-primary" onclick="loadQueue()">
+                        <i class="fas fa-sync-alt"></i>
+                    </button>
+                </div>
+            </div>
+            <div class="card-body">
+                <div class="table-responsive">
+                    <table class="table table-hover">
+                        <thead>
+                            <tr>
+                                <th style="width: 50px;">#</th>
+                                <th>Canción</th>
+                                <th>Duración</th>
+                                <th>Solicitado por</th>
+                                <th>Acciones</th>
+                            </tr>
+                        </thead>
+                        <tbody id="queueTable">
+                            <tr>
+                                <td colspan="5" class="text-center">
+                                    <div class="spinner-border spinner-border-sm me-2" role="status"></div>
+                                    Cargando cola...
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+`, script: `
+<script>
+    const guildId = '${guild.id}';
+    
+    async function loadQueue() {
+        try {
+            const response = await fetch('/api/guild/' + guildId + '/music/queue');
+            if (!response.ok) throw new Error('Error cargando cola');
+            
+            const data = await response.json();
+            
+            if (data.nowPlaying) {
+                document.getElementById('nowPlaying').innerHTML = 
+                    '<div class="d-flex align-items-center"><img src="' + data.nowPlaying.thumbnail + '" width="80" class="rounded me-3"><div class="text-start"><h5>' + data.nowPlaying.title + '</h5><p class="mb-0 text-muted">' + data.nowPlaying.author + '</p></div></div>';
+                document.getElementById('playerControls').style.display = 'block';
+            }
+            
+            const tbody = document.getElementById('queueTable');
+            if (!data.queue || data.queue.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="5" class="text-center">La cola está vacía</td></tr>';
+                return;
+            }
+            
+            tbody.innerHTML = data.queue.map((track, index) => 
+                '<tr><td>' + (index + 1) + '</td><td>' + track.title + '</td><td>' + track.duration + '</td><td>' + track.requestedBy + '</td><td><button class="btn btn-sm btn-outline-danger" onclick="removeFromQueue(' + index + ')"><i class="fas fa-times"></i></button></td></tr>'
+            ).join('');
+        } catch (error) {
+            document.getElementById('queueTable').innerHTML = '<tr><td colspan="5" class="text-center text-muted">No hay música reproduciéndose</td></tr>';
+        }
+    }
+    
+    async function togglePlayPause() {
+        try {
+            const response = await fetch('/api/guild/' + guildId + '/music/pause', { method: 'POST' });
+            if (response.ok) {
+                const btn = document.getElementById('playPauseBtn');
+                btn.innerHTML = btn.innerHTML.includes('pause') ? '<i class="fas fa-play"></i>' : '<i class="fas fa-pause"></i>';
+                showNotification('Reproducción pausada/reanudada', 'success');
+            }
+        } catch (error) {
+            showNotification('Error al pausar/reanudar', 'danger');
+        }
+    }
+    
+    async function skipTrack() {
+        try {
+            const response = await fetch('/api/guild/' + guildId + '/music/skip', { method: 'POST' });
+            if (response.ok) {
+                showNotification('Canción saltada', 'success');
+                setTimeout(loadQueue, 500);
+            }
+        } catch (error) {
+            showNotification('Error al saltar canción', 'danger');
+        }
+    }
+    
+    async function stopMusic() {
+        if (!confirm('¿Detener la reproducción y limpiar la cola?')) return;
+        try {
+            const response = await fetch('/api/guild/' + guildId + '/music/stop', { method: 'POST' });
+            if (response.ok) {
+                showNotification('Reproducción detenida', 'success');
+                loadQueue();
+            }
+        } catch (error) {
+            showNotification('Error al detener música', 'danger');
+        }
+    }
+    
+    async function setVolume(value) {
+        document.getElementById('volumeValue').textContent = value;
+        try {
+            await fetch('/api/guild/' + guildId + '/music/volume', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ volume: parseInt(value) })
+            });
+        } catch (error) {
+            console.error('Error setting volume:', error);
+        }
+    }
+    
+    async function clearQueue() {
+        if (!confirm('¿Limpiar toda la cola de reproducción?')) return;
+        try {
+            const response = await fetch('/api/guild/' + guildId + '/music/clear', { method: 'POST' });
+            if (response.ok) {
+                showNotification('Cola limpiada', 'success');
+                loadQueue();
+            }
+        } catch (error) {
+            showNotification('Error al limpiar cola', 'danger');
+        }
+    }
+    
+    document.addEventListener('DOMContentLoaded', loadQueue);
+    setInterval(loadQueue, 10000);
+</script>
+` }) %>

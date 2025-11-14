@@ -1,42 +1,104 @@
 <%- include('../layout', { title: 'Sorteos - ' + guild.name, body: `
 <div class="d-flex justify-content-between align-items-center mb-4">
     <div>
-        <h1 class="h3 mb-1">
-            <i class="fas fa-gift me-2"></i>
-            Gestión de Sorteos
-        </h1>
+        <h1 class="h3 mb-1"><i class="fas fa-gift me-2"></i>Gestión de Sorteos</h1>
         <p class="text-muted mb-0">${guild.name}</p>
     </div>
-    <a href="/guild/${guild.id}" class="btn btn-outline-secondary">
-        <i class="fas fa-arrow-left me-2"></i>Volver
-    </a>
+    <a href="/guild/${guild.id}" class="btn btn-outline-secondary"><i class="fas fa-arrow-left me-2"></i>Volver</a>
+</div>
+
+<div class="row mb-4">
+    <div class="col-md-4">
+        <div class="card"><div class="card-body text-center"><i class="fas fa-gift fa-2x text-success mb-2"></i><h6>Sorteos Activos</h6><h3 id="activeGiveaways">0</h3></div></div>
+    </div>
+    <div class="col-md-4">
+        <div class="card"><div class="card-body text-center"><i class="fas fa-users fa-2x text-primary mb-2"></i><h6>Participantes</h6><h3 id="totalParticipants">0</h3></div></div>
+    </div>
+    <div class="col-md-4">
+        <div class="card"><div class="card-body text-center"><i class="fas fa-trophy fa-2x text-warning mb-2"></i><h6>Completados</h6><h3 id="completedGiveaways">0</h3></div></div>
+    </div>
 </div>
 
 <div class="row">
     <div class="col-md-12">
         <div class="card">
-            <div class="card-header">
-                <h5 class="mb-0">
-                    <i class="fas fa-calendar-check me-2"></i>
-                    Sorteos Activos
-                </h5>
+            <div class="card-header d-flex justify-content-between">
+                <h5 class="mb-0"><i class="fas fa-list me-2"></i>Sorteos</h5>
+                <button class="btn btn-sm btn-success" data-bs-toggle="modal" data-bs-target="#createGiveawayModal"><i class="fas fa-plus me-1"></i>Crear Sorteo</button>
             </div>
             <div class="card-body">
-                <div class="alert alert-info">
-                    <i class="fas fa-info-circle me-2"></i>
-                    Panel de sorteos en desarrollo. Próximamente podrás crear y gestionar sorteos desde aquí.
+                <div class="table-responsive">
+                    <table class="table"><thead><tr><th>Premio</th><th>Ganadores</th><th>Finaliza</th><th>Participantes</th><th>Estado</th><th>Acciones</th></tr></thead>
+                    <tbody id="giveawaysTable"><tr><td colspan="6" class="text-center">Cargando...</td></tr></tbody></table>
                 </div>
-                
-                <h6 class="mb-3">Funciones próximamente:</h6>
-                <ul>
-                    <li>Crear nuevos sorteos</li>
-                    <li>Ver sorteos activos y finalizados</li>
-                    <li>Gestionar participantes</li>
-                    <li>Seleccionar ganadores manualmente</li>
-                    <li>Estadísticas de sorteos</li>
-                </ul>
             </div>
         </div>
     </div>
 </div>
-`, script: `` }) %>
+
+<div class="modal fade" id="createGiveawayModal" tabindex="-1">
+    <div class="modal-dialog"><div class="modal-content">
+        <div class="modal-header"><h5 class="modal-title">Crear Sorteo</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
+        <div class="modal-body">
+            <div class="mb-3"><label class="form-label">Premio</label><input type="text" class="form-control" id="giveawayPrize" required></div>
+            <div class="mb-3"><label class="form-label">Duración (minutos)</label><input type="number" class="form-control" id="giveawayDuration" min="1" value="60"></div>
+            <div class="mb-3"><label class="form-label">Ganadores</label><input type="number" class="form-control" id="giveawayWinners" min="1" value="1"></div>
+        </div>
+        <div class="modal-footer"><button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button><button type="button" class="btn btn-success" onclick="createGiveaway()">Crear</button></div>
+    </div></div>
+</div>
+`, script: `
+<script>
+const guildId = '${guild.id}';
+async function loadGiveaways() {
+    try {
+        const res = await fetch('/api/guild/' + guildId + '/giveaways');
+        const data = await res.json();
+        document.getElementById('activeGiveaways').textContent = data.active || 0;
+        document.getElementById('totalParticipants').textContent = data.participants || 0;
+        document.getElementById('completedGiveaways').textContent = data.completed || 0;
+        const tbody = document.getElementById('giveawaysTable');
+        if (!data.giveaways || data.giveaways.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="6" class="text-center">No hay sorteos</td></tr>';
+            return;
+        }
+        tbody.innerHTML = data.giveaways.map(g => '<tr><td>' + g.prize + '</td><td>' + g.winners + '</td><td>' + new Date(g.endsAt).toLocaleString() + '</td><td>' + g.participants + '</td><td><span class="badge bg-' + (g.active ? 'success' : 'secondary') + '">' + (g.active ? 'Activo' : 'Finalizado') + '</span></td><td><button class="btn btn-sm btn-danger" onclick="endGiveaway(\'' + g.id + '\')"><i class="fas fa-stop"></i></button></td></tr>').join('');
+    } catch (error) {
+        document.getElementById('giveawaysTable').innerHTML = '<tr><td colspan="6" class="text-center text-danger">Error cargando sorteos</td></tr>';
+    }
+}
+async function createGiveaway() {
+    const prize = document.getElementById('giveawayPrize').value;
+    const duration = document.getElementById('giveawayDuration').value;
+    const winners = document.getElementById('giveawayWinners').value;
+    if (!prize) return showNotification('Completa todos los campos', 'warning');
+    try {
+        const res = await fetch('/api/guild/' + guildId + '/giveaways/create', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({prize, duration: parseInt(duration), winners: parseInt(winners)})
+        });
+        if (res.ok) {
+            showNotification('Sorteo creado', 'success');
+            bootstrap.Modal.getInstance(document.getElementById('createGiveawayModal')).hide();
+            loadGiveaways();
+        }
+    } catch (error) {
+        showNotification('Error al crear sorteo', 'danger');
+    }
+}
+async function endGiveaway(id) {
+    if (!confirm('¿Finalizar este sorteo?')) return;
+    try {
+        const res = await fetch('/api/guild/' + guildId + '/giveaways/' + id + '/end', {method: 'POST'});
+        if (res.ok) {
+            showNotification('Sorteo finalizado', 'success');
+            loadGiveaways();
+        }
+    } catch (error) {
+        showNotification('Error al finalizar sorteo', 'danger');
+    }
+}
+document.addEventListener('DOMContentLoaded', loadGiveaways);
+</script>
+` }) %>
