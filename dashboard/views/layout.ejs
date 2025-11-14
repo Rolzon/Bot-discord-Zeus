@@ -16,7 +16,7 @@
     
     <style>
         :root {
-            /* Tema por defecto - Moderno Azul */
+            /* Tema por defecto - Claro Moderno */
             --primary-color: #6366f1;
             --primary-dark: #4f46e5;
             --primary-light: #8b5cf6;
@@ -26,18 +26,19 @@
             --warning-color: #f97316;
             --success-color: #22c55e;
             
-            /* Colores de fondo */
-            --bg-primary: #0f172a;
-            --bg-secondary: #1e293b;
-            --bg-tertiary: #334155;
+            /* Colores de fondo - CLARO POR DEFECTO */
+            --bg-primary: #f8fafc;
+            --bg-secondary: #f1f5f9;
+            --bg-tertiary: #e2e8f0;
             --bg-card: #ffffff;
             --bg-hover: #f1f5f9;
             
-            /* Texto */
+            /* Texto - OSCURO POR DEFECTO */
             --text-primary: #1e293b;
             --text-secondary: #64748b;
             --text-muted: #94a3b8;
             --text-white: #ffffff;
+            --text-heading: #0f172a;
             
             /* Bordes y sombras */
             --border-color: #e2e8f0;
@@ -63,7 +64,11 @@
             --text-primary: #f8fafc;
             --text-secondary: #cbd5e1;
             --text-muted: #94a3b8;
+            --text-heading: #ffffff;
             --border-color: #334155;
+            --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.3);
+            --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.3);
+            --shadow-xl: 0 20px 25px -5px rgb(0 0 0 / 0.3);
         }
 
         /* Tema Púrpura */
@@ -89,11 +94,15 @@
         }
 
         body {
-            background: linear-gradient(135deg, var(--bg-primary) 0%, var(--bg-secondary) 100%);
+            background: var(--bg-primary);
             font-family: 'Inter', 'Segoe UI', system-ui, -apple-system, sans-serif;
             color: var(--text-primary);
             min-height: 100vh;
             transition: all 0.3s ease;
+        }
+
+        h1, h2, h3, h4, h5, h6 {
+            color: var(--text-heading, var(--text-primary));
         }
 
         /* Navbar moderno */

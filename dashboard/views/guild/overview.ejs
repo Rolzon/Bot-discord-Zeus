@@ -336,11 +336,14 @@
     .function-card {
         transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
         cursor: pointer;
+        background: var(--bg-card);
+        border: 1px solid var(--border-color);
     }
     
     .function-card:hover {
         transform: translateY(-8px);
         box-shadow: var(--shadow-xl);
+        border-color: var(--primary-color);
     }
     
     .activity-icon {
@@ -357,6 +360,37 @@
         height: 48px;
         border-radius: 50%;
         object-fit: cover;
+    }
+    
+    .stats-card {
+        background: linear-gradient(135deg, var(--primary-color) 0%, var(--primary-dark) 100%);
+        color: white !important;
+        padding: 1.5rem;
+        border-radius: var(--radius-lg);
+        box-shadow: var(--shadow-lg);
+        text-align: center;
+    }
+    
+    .stats-number {
+        font-size: 2rem;
+        font-weight: bold;
+        color: white !important;
+        margin-bottom: 0.5rem;
+    }
+    
+    .stats-label {
+        color: rgba(255, 255, 255, 0.9) !important;
+        font-size: 0.875rem;
+    }
+    
+    .card {
+        background: var(--bg-card);
+        border: 1px solid var(--border-color);
+    }
+    
+    .card-header {
+        background: var(--bg-secondary);
+        border-bottom: 1px solid var(--border-color);
     }
 </style>
 `, script: `

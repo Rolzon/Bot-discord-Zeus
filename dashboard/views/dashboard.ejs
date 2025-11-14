@@ -168,11 +168,12 @@ ${typeof error !== 'undefined' && error ? `
     .guild-card {
         transition: all 0.3s ease;
         cursor: pointer;
+        background: var(--bg-card);
     }
     
     .guild-card:hover {
         transform: translateY(-5px);
-        box-shadow: 0 8px 25px rgba(0,0,0,0.15);
+        box-shadow: var(--shadow-xl);
     }
     
     .guild-icon {
@@ -180,6 +181,24 @@ ${typeof error !== 'undefined' && error ? `
         height: 80px;
         border-radius: 50%;
         object-fit: cover;
+    }
+    
+    .stats-card {
+        background: linear-gradient(135deg, var(--primary-color) 0%, var(--primary-dark) 100%);
+        color: white !important;
+        padding: 1.5rem;
+        border-radius: var(--radius-lg);
+        box-shadow: var(--shadow-lg);
+    }
+    
+    .stats-number {
+        font-size: 2rem;
+        font-weight: bold;
+        color: white !important;
+    }
+    
+    .stats-label {
+        color: rgba(255, 255, 255, 0.9) !important;
     }
 </style>
 `, script: `
