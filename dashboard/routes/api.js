@@ -305,13 +305,47 @@ router.get('/guild/:guildId/bot-stats', ensureGuildAdmin, async (req, res) => {
       messagesProcessed: 0, // Se conectaría con un sistema de tracking
       musicQueues: 0, // Se conectaría con discord-player
       activeTickets: guild.channels.cache.filter(c => c.name.startsWith('ticket-')).size,
-      tempVoiceChannels: guild.channels.cache.filter(c => c.name.includes('🔊')).size
+      tempVoiceChannels: guild.channels.cache.filter(c => c.name.includes('\ud83d\udd0a')).size
     };
 
     res.json(stats);
   } catch (error) {
     console.error('Error obteniendo estadísticas del bot:', error);
     res.status(500).json({ error: 'Error obteniendo estadísticas' });
+  }
+});
+
+// Leaderboard básico de niveles (datos simulados por ahora)
+router.get('/guild/:guildId/levels/leaderboard', ensureGuildAdmin, async (req, res) => {
+  try {
+    const guild = req.guild;
+
+    // Cargar miembros del servidor
+    await guild.members.fetch();
+    const members = Array.from(guild.members.cache.values())
+      .filter(m => !m.user.bot);
+
+    // Por ahora generamos datos básicos sin leer la base de datos real de niveles
+    const leaderboard = members.slice(0, 50).map(member => ({
+      userId: member.id,
+      username: member.displayName || member.user.tag,
+      avatar: member.user.displayAvatarURL({ size: 64 }),
+      level: 0,
+      xp: 0,
+      messageCount: 0
+    }));
+
+    const stats = {
+      totalUsers: leaderboard.length,
+      avgLevel: leaderboard.length ? 0 : 0,
+      totalXP: 0,
+      maxLevel: 0
+    };
+
+    res.json({ leaderboard, stats });
+  } catch (error) {
+    console.error('Error obteniendo leaderboard de niveles:', error);
+    res.status(500).json({ error: 'Error obteniendo datos de niveles' });
   }
 });
 
