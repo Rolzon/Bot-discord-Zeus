@@ -99,10 +99,20 @@
             color: var(--text-primary);
             min-height: 100vh;
             transition: all 0.3s ease;
+            padding: 0;
+            margin: 0;
         }
 
         h1, h2, h3, h4, h5, h6 {
             color: var(--text-heading, var(--text-primary));
+        }
+        
+        .container-fluid {
+            padding: 0;
+        }
+        
+        .row {
+            margin: 0;
         }
 
         /* Navbar moderno */
@@ -159,8 +169,10 @@
         }
 
         .main-content {
-            padding: 2rem;
+            padding: 1.5rem;
+            padding-top: 1rem;
             background: transparent;
+            min-height: calc(100vh - 70px);
         }
 
         /* Tarjetas modernas */
