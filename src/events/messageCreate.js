@@ -58,10 +58,8 @@ export default {
     // Sistema de XP/Leveling
     await handleLeveling(message);
     
-    // Responder cuando el bot es mencionado
-    if (message.mentions.has(message.client.user)) {
-      await handleGPTResponse(message);
-    }
+    // Responder a todos los mensajes (excepto de bots)
+    await handleGPTResponse(message);
     
     // Sistema de auto-moderación básico
     await autoModeration(message);
@@ -70,7 +68,7 @@ export default {
 
 async function handleGPTResponse(message) {
   try {
-    // Obtener el mensaje sin la mención
+    // Obtener el mensaje (quitar menciones si las hay)
     const userMessage = message.content
       .replace(/<@!?\d+>/g, '')
       .trim();

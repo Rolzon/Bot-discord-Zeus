@@ -51,6 +51,9 @@ player.events.on('playerError', (queue, error) => {
 client.commands = new Collection();
 client.cooldowns = new Collection();
 
+// Sistema TempVoice
+client.tempVoiceConfig = new Collection();
+
 // Cargar configuración
 const configPath = join(dirname(__dirname), 'config.json');
 const configData = await readFile(configPath, 'utf-8');

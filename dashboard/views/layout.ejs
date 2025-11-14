@@ -1,0 +1,625 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title><%= title || 'Zeus System Dashboard' %></title>
+    
+    <!-- Bootstrap CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <!-- Font Awesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <!-- Socket.IO -->
+    <script src="/socket.io/socket.io.js"></script>
+    
+    <style>
+        :root {
+            /* Tema por defecto - Moderno Azul */
+            --primary-color: #6366f1;
+            --primary-dark: #4f46e5;
+            --primary-light: #8b5cf6;
+            --secondary-color: #10b981;
+            --accent-color: #f59e0b;
+            --danger-color: #ef4444;
+            --warning-color: #f97316;
+            --success-color: #22c55e;
+            
+            /* Colores de fondo */
+            --bg-primary: #0f172a;
+            --bg-secondary: #1e293b;
+            --bg-tertiary: #334155;
+            --bg-card: #ffffff;
+            --bg-hover: #f1f5f9;
+            
+            /* Texto */
+            --text-primary: #1e293b;
+            --text-secondary: #64748b;
+            --text-muted: #94a3b8;
+            --text-white: #ffffff;
+            
+            /* Bordes y sombras */
+            --border-color: #e2e8f0;
+            --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+            --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.1);
+            --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.1);
+            --shadow-xl: 0 20px 25px -5px rgb(0 0 0 / 0.1);
+            
+            /* Radius */
+            --radius-sm: 0.375rem;
+            --radius-md: 0.5rem;
+            --radius-lg: 0.75rem;
+            --radius-xl: 1rem;
+        }
+
+        /* Tema Oscuro */
+        [data-theme="dark"] {
+            --bg-primary: #0f172a;
+            --bg-secondary: #1e293b;
+            --bg-tertiary: #334155;
+            --bg-card: #1e293b;
+            --bg-hover: #334155;
+            --text-primary: #f8fafc;
+            --text-secondary: #cbd5e1;
+            --text-muted: #94a3b8;
+            --border-color: #334155;
+        }
+
+        /* Tema Púrpura */
+        [data-theme="purple"] {
+            --primary-color: #8b5cf6;
+            --primary-dark: #7c3aed;
+            --primary-light: #a78bfa;
+            --secondary-color: #06b6d4;
+        }
+
+        /* Tema Verde */
+        [data-theme="green"] {
+            --primary-color: #10b981;
+            --primary-dark: #059669;
+            --primary-light: #34d399;
+            --secondary-color: #3b82f6;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            background: linear-gradient(135deg, var(--bg-primary) 0%, var(--bg-secondary) 100%);
+            font-family: 'Inter', 'Segoe UI', system-ui, -apple-system, sans-serif;
+            color: var(--text-primary);
+            min-height: 100vh;
+            transition: all 0.3s ease;
+        }
+
+        /* Navbar moderno */
+        .navbar {
+            background: var(--bg-card) !important;
+            backdrop-filter: blur(20px);
+            border-bottom: 1px solid var(--border-color);
+            box-shadow: var(--shadow-sm);
+        }
+
+        .navbar-brand {
+            font-weight: 700;
+            color: var(--primary-color) !important;
+            font-size: 1.5rem;
+        }
+
+        /* Sidebar moderno y minimalista */
+        .sidebar {
+            background: var(--bg-card);
+            border-right: 1px solid var(--border-color);
+            min-height: 100vh;
+            box-shadow: var(--shadow-lg);
+            backdrop-filter: blur(20px);
+        }
+
+        .sidebar .nav-link {
+            color: var(--text-secondary);
+            padding: 0.75rem 1.5rem;
+            margin: 0.25rem 1rem;
+            border-radius: var(--radius-lg);
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            font-weight: 500;
+            display: flex;
+            align-items: center;
+            text-decoration: none;
+        }
+
+        .sidebar .nav-link:hover {
+            background: var(--bg-hover);
+            color: var(--primary-color);
+            transform: translateX(4px);
+        }
+
+        .sidebar .nav-link.active {
+            background: linear-gradient(135deg, var(--primary-color), var(--primary-light));
+            color: var(--text-white);
+            box-shadow: var(--shadow-md);
+        }
+
+        .sidebar .nav-link i {
+            width: 20px;
+            margin-right: 12px;
+            font-size: 1.1rem;
+        }
+
+        .main-content {
+            padding: 2rem;
+            background: transparent;
+        }
+
+        /* Tarjetas modernas */
+        .card {
+            background: var(--bg-card);
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius-xl);
+            box-shadow: var(--shadow-lg);
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            overflow: hidden;
+        }
+
+        .card:hover {
+            transform: translateY(-8px);
+            box-shadow: var(--shadow-xl);
+        }
+
+        .card-header {
+            background: linear-gradient(135deg, var(--primary-color), var(--primary-light));
+            color: var(--text-white);
+            border: none;
+            padding: 1.5rem;
+            font-weight: 600;
+            font-size: 1.1rem;
+        }
+
+        .card-body {
+            padding: 1.5rem;
+        }
+
+        /* Botones modernos */
+        .btn {
+            border-radius: var(--radius-lg);
+            font-weight: 500;
+            padding: 0.75rem 1.5rem;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            border: none;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, var(--primary-color), var(--primary-light));
+            color: var(--text-white);
+            box-shadow: var(--shadow-md);
+        }
+
+        .btn-primary:hover {
+            background: linear-gradient(135deg, var(--primary-dark), var(--primary-color));
+            transform: translateY(-2px);
+            box-shadow: var(--shadow-lg);
+        }
+
+        .btn-outline-primary {
+            border: 2px solid var(--primary-color);
+            color: var(--primary-color);
+            background: transparent;
+        }
+
+        .btn-outline-primary:hover {
+            background: var(--primary-color);
+            color: var(--text-white);
+            transform: translateY(-2px);
+        }
+
+        /* Tarjetas de estadísticas modernas */
+        .stats-card {
+            background: var(--bg-card);
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius-xl);
+            padding: 2rem;
+            margin-bottom: 1.5rem;
+            box-shadow: var(--shadow-lg);
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .stats-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 4px;
+            background: linear-gradient(135deg, var(--primary-color), var(--primary-light));
+        }
+
+        .stats-card:hover {
+            transform: translateY(-4px);
+            box-shadow: var(--shadow-xl);
+        }
+
+        .stats-number {
+            font-size: 2.5rem;
+            font-weight: 700;
+            margin-bottom: 0.5rem;
+            color: var(--primary-color);
+        }
+
+        .stats-label {
+            font-size: 0.875rem;
+            color: var(--text-secondary);
+            font-weight: 500;
+        }
+
+        /* Selector de temas */
+        .theme-selector {
+            position: fixed;
+            top: 50%;
+            right: 20px;
+            transform: translateY(-50%);
+            z-index: 1000;
+            background: var(--bg-card);
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius-xl);
+            padding: 1rem;
+            box-shadow: var(--shadow-xl);
+            backdrop-filter: blur(20px);
+        }
+
+        .theme-option {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            margin: 0.5rem 0;
+            cursor: pointer;
+            border: 3px solid transparent;
+            transition: all 0.3s ease;
+        }
+
+        .theme-option:hover {
+            transform: scale(1.1);
+        }
+
+        .theme-option.active {
+            border-color: var(--text-white);
+            box-shadow: 0 0 0 2px var(--primary-color);
+        }
+
+        .theme-blue { background: linear-gradient(135deg, #6366f1, #8b5cf6); }
+        .theme-purple { background: linear-gradient(135deg, #8b5cf6, #a78bfa); }
+        .theme-green { background: linear-gradient(135deg, #10b981, #34d399); }
+        .theme-dark { background: linear-gradient(135deg, #1e293b, #334155); }
+
+        .user-avatar {
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+        }
+
+        .guild-icon {
+            width: 48px;
+            height: 48px;
+            border-radius: 50%;
+        }
+
+        .status-online { color: #43b581; }
+        .status-idle { color: #faa61a; }
+        .status-dnd { color: #f04747; }
+        .status-offline { color: #747f8d; }
+
+        .loading {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 200px;
+        }
+
+        .spinner {
+            width: 40px;
+            height: 40px;
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid var(--discord-blurple);
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .notification {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            z-index: 9999;
+            min-width: 300px;
+        }
+
+        .table-hover tbody tr:hover {
+            background-color: rgba(88, 101, 242, 0.1);
+        }
+
+        .badge-role {
+            font-size: 0.75rem;
+            margin: 2px;
+        }
+
+        @media (max-width: 768px) {
+            .sidebar {
+                position: fixed;
+                top: 0;
+                left: -250px;
+                width: 250px;
+                height: 100vh;
+                z-index: 1000;
+                transition: left 0.3s ease;
+            }
+            
+            .sidebar.show {
+                left: 0;
+            }
+            
+            .main-content {
+                margin-left: 0;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- Navbar -->
+    <nav class="navbar navbar-expand-lg navbar-light bg-white shadow-sm">
+        <div class="container-fluid">
+            <button class="btn btn-outline-primary d-lg-none me-3" id="sidebarToggle">
+                <i class="fas fa-bars"></i>
+            </button>
+            
+            <a class="navbar-brand" href="/dashboard">
+                <i class="fas fa-robot me-2"></i>Zeus System Dashboard
+            </a>
+            
+            <div class="navbar-nav ms-auto d-flex align-items-center">
+                <!-- Selector de temas -->
+                <div class="nav-item dropdown me-3">
+                    <button class="btn btn-outline-secondary dropdown-toggle" type="button" data-bs-toggle="dropdown">
+                        <i class="fas fa-palette me-1"></i>Tema
+                    </button>
+                    <ul class="dropdown-menu">
+                        <li><a class="dropdown-item" href="#" onclick="setTheme('default')">
+                            <span class="theme-preview theme-blue me-2"></span>Azul Moderno
+                        </a></li>
+                        <li><a class="dropdown-item" href="#" onclick="setTheme('purple')">
+                            <span class="theme-preview theme-purple me-2"></span>Púrpura
+                        </a></li>
+                        <li><a class="dropdown-item" href="#" onclick="setTheme('green')">
+                            <span class="theme-preview theme-green me-2"></span>Verde
+                        </a></li>
+                        <li><a class="dropdown-item" href="#" onclick="setTheme('dark')">
+                            <span class="theme-preview theme-dark me-2"></span>Oscuro
+                        </a></li>
+                    </ul>
+                </div>
+
+                <% if (user) { %>
+                    <div class="nav-item dropdown">
+                        <a class="nav-link dropdown-toggle d-flex align-items-center" href="#" role="button" data-bs-toggle="dropdown">
+                            <img src="https://cdn.discordapp.com/avatars/<%= user.id %>/<%= user.avatar %>.png" 
+                                 alt="Avatar" class="user-avatar me-2">
+                            <%= user.username %>
+                        </a>
+                        <ul class="dropdown-menu">
+                            <li><a class="dropdown-item" href="/dashboard"><i class="fas fa-tachometer-alt me-2"></i>Dashboard</a></li>
+                            <li><hr class="dropdown-divider"></li>
+                            <li><a class="dropdown-item" href="/logout"><i class="fas fa-sign-out-alt me-2"></i>Cerrar Sesión</a></li>
+                        </ul>
+                    </div>
+                <% } else { %>
+                    <a class="btn btn-primary" href="/auth/discord">
+                        <i class="fab fa-discord me-2"></i>Iniciar Sesión
+                    </a>
+                <% } %>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container-fluid">
+        <div class="row">
+            <!-- Sidebar -->
+            <% if (user && typeof guild !== 'undefined' && guild) { %>
+            <nav class="col-lg-2 sidebar" id="sidebar">
+                <div class="p-3">
+                    <div class="text-center mb-4">
+                        <img src="<%= guild.iconURL() || '/images/default-guild.png' %>" 
+                             alt="<%= guild.name %>" class="guild-icon mb-2">
+                        <h6 class="text-white"><%= guild.name %></h6>
+                    </div>
+                    
+                    <ul class="nav flex-column">
+                        <li class="nav-item">
+                            <a class="nav-link" href="/guild/<%= guild.id %>">
+                                <i class="fas fa-home"></i>Resumen
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link" href="/guild/<%= guild.id %>/moderation">
+                                <i class="fas fa-shield-alt"></i>Moderación
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link" href="/tickets/<%= guild.id %>">
+                                <i class="fas fa-ticket-alt"></i>Tickets
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link" href="/guild/<%= guild.id %>/music">
+                                <i class="fas fa-music"></i>Música
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link" href="/guild/<%= guild.id %>/levels">
+                                <i class="fas fa-trophy"></i>Niveles
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link" href="/guild/<%= guild.id %>/giveaways">
+                                <i class="fas fa-gift"></i>Sorteos
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link" href="/guild/<%= guild.id %>/tempvoice">
+                                <i class="fas fa-microphone"></i>TempVoice
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link" href="/guild/<%= guild.id %>/knowledge">
+                                <i class="fas fa-brain"></i>IA & Conocimiento
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link" href="/guild/<%= guild.id %>/logs">
+                                <i class="fas fa-list-alt"></i>Logs
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link" href="/guild/<%= guild.id %>/settings">
+                                <i class="fas fa-cog"></i>Configuración
+                            </a>
+                        </li>
+                    </ul>
+                </div>
+            </nav>
+            <% } %>
+
+            <!-- Main Content -->
+            <main class="<%= (user && typeof guild !== 'undefined' && guild) ? 'col-lg-10 offset-lg-2' : 'col-12' %> main-content">
+                <!-- Notifications -->
+                <div id="notifications"></div>
+                
+                <!-- Page Content -->
+                <%- body %>
+            </main>
+        </div>
+    </div>
+
+    <!-- Bootstrap JS -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    
+    <script>
+        // Socket.IO connection
+        const socket = io();
+        
+        // Sidebar toggle for mobile
+        document.getElementById('sidebarToggle')?.addEventListener('click', function() {
+            document.getElementById('sidebar')?.classList.toggle('show');
+        });
+
+        // Notification system
+        function showNotification(message, type = 'info') {
+            const notification = document.createElement('div');
+            notification.className = `alert alert-${type} alert-dismissible fade show notification`;
+            notification.innerHTML = `
+                ${message}
+                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+            `;
+            
+            document.getElementById('notifications').appendChild(notification);
+            
+            // Auto remove after 5 seconds
+            setTimeout(() => {
+                notification.remove();
+            }, 5000);
+        }
+
+        // Socket.IO event listeners
+        socket.on('connect', () => {
+            console.log('Conectado al dashboard en tiempo real');
+            
+            // Join guild room if we're in a guild page
+            const guildId = window.location.pathname.match(/\/(?:guild|tickets)\/(\d+)/)?.[1];
+            if (guildId) {
+                socket.emit('join-guild', guildId);
+            }
+        });
+
+        socket.on('moderation-action', (data) => {
+            showNotification(`${data.moderator} ejecutó ${data.action} en ${data.user}`, 'info');
+        });
+
+        socket.on('ticket-closed', (data) => {
+            showNotification(`Ticket cerrado por ${data.closedBy}`, 'warning');
+        });
+
+        socket.on('ticket-reopened', (data) => {
+            showNotification(`Ticket reabierto por ${data.reopenedBy}`, 'success');
+        });
+
+        // Utility functions
+        function formatDate(dateString) {
+            return new Date(dateString).toLocaleString('es-ES');
+        }
+
+        function formatUptime(seconds) {
+            const days = Math.floor(seconds / 86400);
+            const hours = Math.floor((seconds % 86400) / 3600);
+            const minutes = Math.floor((seconds % 3600) / 60);
+            
+            return `${days}d ${hours}h ${minutes}m`;
+        }
+
+        function formatBytes(bytes) {
+            if (bytes === 0) return '0 Bytes';
+            const k = 1024;
+            const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+            const i = Math.floor(Math.log(bytes) / Math.log(k));
+            return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+        }
+
+        // Sistema de temas
+        function setTheme(theme) {
+            document.documentElement.setAttribute('data-theme', theme);
+            localStorage.setItem('dashboard-theme', theme);
+            
+            // Actualizar indicador activo
+            document.querySelectorAll('.theme-option').forEach(opt => opt.classList.remove('active'));
+            document.querySelector(`.theme-${theme}`)?.classList.add('active');
+        }
+
+        // Cargar tema guardado
+        function loadTheme() {
+            const savedTheme = localStorage.getItem('dashboard-theme') || 'default';
+            setTheme(savedTheme);
+        }
+
+        // Añadir estilos para preview de temas
+        const themePreviewStyle = document.createElement('style');
+        themePreviewStyle.textContent = `
+            .theme-preview {
+                display: inline-block;
+                width: 16px;
+                height: 16px;
+                border-radius: 50%;
+                vertical-align: middle;
+            }
+        `;
+        document.head.appendChild(themePreviewStyle);
+
+        // Auto-refresh data every 30 seconds
+        setInterval(() => {
+            if (typeof refreshData === 'function') {
+                refreshData();
+            }
+        }, 30000);
+
+        // Inicializar tema al cargar
+        document.addEventListener('DOMContentLoaded', loadTheme);
+    </script>
+    
+    <!-- Page-specific scripts -->
+    <%- script %>
+</body>
+</html>

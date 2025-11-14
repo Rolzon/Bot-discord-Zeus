@@ -1,0 +1,456 @@
+<%- include('../layout', { title: 'Ticket #' + ticket.id + ' - ' + guild.name, body: `
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <div>
+        <nav aria-label="breadcrumb">
+            <ol class="breadcrumb">
+                <li class="breadcrumb-item"><a href="/dashboard">Dashboard</a></li>
+                <li class="breadcrumb-item"><a href="/tickets/${guild.id}">Tickets</a></li>
+                <li class="breadcrumb-item active">Ticket #${ticket.id}</li>
+            </ol>
+        </nav>
+        <h1 class="h3 mb-1">
+            <i class="fas fa-ticket-alt me-2"></i>
+            ${ticket.name}
+        </h1>
+        <p class="text-muted mb-0">
+            <span class="badge ${ticket.status === 'open' ? 'bg-success' : 'bg-secondary'} me-2">
+                ${ticket.status === 'open' ? 'Abierto' : 'Cerrado'}
+            </span>
+            Creado por <strong>${ticket.creator.username}</strong> • ${new Date(ticket.createdAt).toLocaleString()}
+        </p>
+    </div>
+    <div class="d-flex gap-2">
+        ${ticket.status === 'open' ? `
+            <button class="btn btn-warning" onclick="closeTicket()">
+                <i class="fas fa-lock me-2"></i>Cerrar Ticket
+            </button>
+        ` : `
+            <button class="btn btn-success" onclick="reopenTicket()">
+                <i class="fas fa-unlock me-2"></i>Reabrir Ticket
+            </button>
+        `}
+        <button class="btn btn-danger" onclick="deleteTicket()">
+            <i class="fas fa-trash me-2"></i>Eliminar
+        </button>
+        <button class="btn btn-outline-primary" onclick="downloadTranscript()">
+            <i class="fas fa-download me-2"></i>Descargar Transcript
+        </button>
+    </div>
+</div>
+
+<!-- Información del ticket -->
+<div class="row mb-4">
+    <div class="col-md-8">
+        <!-- Chat del ticket -->
+        <div class="card">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h5 class="mb-0">
+                    <i class="fas fa-comments me-2"></i>
+                    Conversación
+                </h5>
+                <div class="d-flex align-items-center">
+                    <span class="badge bg-primary me-2">${ticket.messages ? ticket.messages.length : 0} mensajes</span>
+                    <button class="btn btn-sm btn-outline-primary" onclick="refreshMessages()">
+                        <i class="fas fa-sync-alt"></i>
+                    </button>
+                </div>
+            </div>
+            <div class="card-body p-0">
+                <div class="ticket-chat" id="ticketChat" style="height: 500px; overflow-y: auto;">
+                    ${ticket.messages && ticket.messages.length > 0 ? 
+                        ticket.messages.map(message => `
+                            <div class="message-item p-3 border-bottom">
+                                <div class="d-flex align-items-start">
+                                    <img src="${message.author.avatar}" alt="${message.author.username}" 
+                                         class="rounded-circle me-3" width="40" height="40">
+                                    <div class="flex-grow-1">
+                                        <div class="d-flex align-items-center mb-1">
+                                            <strong class="me-2">${message.author.username}</strong>
+                                            ${message.author.isStaff ? '<span class="badge bg-primary me-2">Staff</span>' : ''}
+                                            <small class="text-muted">${new Date(message.timestamp).toLocaleString()}</small>
+                                        </div>
+                                        <div class="message-content">
+                                            ${message.content}
+                                        </div>
+                                        ${message.attachments && message.attachments.length > 0 ? `
+                                            <div class="attachments mt-2">
+                                                ${message.attachments.map(att => `
+                                                    <a href="${att.url}" target="_blank" class="btn btn-sm btn-outline-secondary me-2">
+                                                        <i class="fas fa-paperclip me-1"></i>${att.name}
+                                                    </a>
+                                                `).join('')}
+                                            </div>
+                                        ` : ''}
+                                    </div>
+                                </div>
+                            </div>
+                        `).join('') 
+                        : `
+                            <div class="text-center py-5">
+                                <i class="fas fa-comments fa-3x text-muted mb-3"></i>
+                                <h5>No hay mensajes aún</h5>
+                                <p class="text-muted">Los mensajes del ticket aparecerán aquí en tiempo real.</p>
+                            </div>
+                        `
+                    }
+                </div>
+            </div>
+            ${ticket.status === 'open' ? `
+                <div class="card-footer">
+                    <form id="sendMessageForm" class="d-flex gap-2">
+                        <input type="text" class="form-control" id="messageInput" 
+                               placeholder="Escribe un mensaje..." required>
+                        <button type="submit" class="btn btn-primary">
+                            <i class="fas fa-paper-plane"></i>
+                        </button>
+                    </form>
+                </div>
+            ` : ''}
+        </div>
+    </div>
+    
+    <div class="col-md-4">
+        <!-- Información del ticket -->
+        <div class="card mb-4">
+            <div class="card-header">
+                <h6 class="mb-0">
+                    <i class="fas fa-info-circle me-2"></i>
+                    Información del Ticket
+                </h6>
+            </div>
+            <div class="card-body">
+                <div class="mb-3">
+                    <label class="form-label fw-bold">Estado</label>
+                    <div>
+                        <span class="badge ${ticket.status === 'open' ? 'bg-success' : 'bg-secondary'} fs-6">
+                            ${ticket.status === 'open' ? 'Abierto' : 'Cerrado'}
+                        </span>
+                    </div>
+                </div>
+                
+                <div class="mb-3">
+                    <label class="form-label fw-bold">Creador</label>
+                    <div class="d-flex align-items-center">
+                        <img src="${ticket.creator.avatar}" alt="${ticket.creator.username}" 
+                             class="rounded-circle me-2" width="24" height="24">
+                        <span>${ticket.creator.username}</span>
+                    </div>
+                </div>
+                
+                <div class="mb-3">
+                    <label class="form-label fw-bold">Categoría</label>
+                    <div>
+                        <span class="badge bg-info">${ticket.category || 'General'}</span>
+                    </div>
+                </div>
+                
+                <div class="mb-3">
+                    <label class="form-label fw-bold">Creado</label>
+                    <div class="text-muted">
+                        ${new Date(ticket.createdAt).toLocaleString()}
+                    </div>
+                </div>
+                
+                ${ticket.claimedBy ? `
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">Reclamado por</label>
+                        <div class="d-flex align-items-center">
+                            <img src="${ticket.claimedBy.avatar}" alt="${ticket.claimedBy.username}" 
+                                 class="rounded-circle me-2" width="24" height="24">
+                            <span>${ticket.claimedBy.username}</span>
+                        </div>
+                    </div>
+                ` : ''}
+                
+                ${ticket.closedAt ? `
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">Cerrado</label>
+                        <div class="text-muted">
+                            ${new Date(ticket.closedAt).toLocaleString()}
+                        </div>
+                    </div>
+                ` : ''}
+            </div>
+        </div>
+        
+        <!-- Acciones rápidas -->
+        <div class="card mb-4">
+            <div class="card-header">
+                <h6 class="mb-0">
+                    <i class="fas fa-bolt me-2"></i>
+                    Acciones Rápidas
+                </h6>
+            </div>
+            <div class="card-body">
+                <div class="d-grid gap-2">
+                    ${ticket.status === 'open' ? `
+                        <button class="btn btn-outline-primary btn-sm" onclick="claimTicket()">
+                            <i class="fas fa-hand-paper me-1"></i>Reclamar Ticket
+                        </button>
+                    ` : ''}
+                    <button class="btn btn-outline-info btn-sm" onclick="addNote()">
+                        <i class="fas fa-sticky-note me-1"></i>Añadir Nota
+                    </button>
+                    <button class="btn btn-outline-warning btn-sm" onclick="transferTicket()">
+                        <i class="fas fa-exchange-alt me-1"></i>Transferir
+                    </button>
+                    <button class="btn btn-outline-secondary btn-sm" onclick="viewUserInfo()">
+                        <i class="fas fa-user me-1"></i>Info del Usuario
+                    </button>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Estadísticas -->
+        <div class="card">
+            <div class="card-header">
+                <h6 class="mb-0">
+                    <i class="fas fa-chart-bar me-2"></i>
+                    Estadísticas
+                </h6>
+            </div>
+            <div class="card-body">
+                <div class="row text-center">
+                    <div class="col-6">
+                        <div class="fw-bold text-primary">${ticket.messages ? ticket.messages.length : 0}</div>
+                        <small class="text-muted">Mensajes</small>
+                    </div>
+                    <div class="col-6">
+                        <div class="fw-bold text-success" id="responseTime">-</div>
+                        <small class="text-muted">Tiempo Respuesta</small>
+                    </div>
+                </div>
+                <hr>
+                <div class="row text-center">
+                    <div class="col-6">
+                        <div class="fw-bold text-info">${ticket.participants ? ticket.participants.length : 1}</div>
+                        <small class="text-muted">Participantes</small>
+                    </div>
+                    <div class="col-6">
+                        <div class="fw-bold text-warning" id="ticketAge">-</div>
+                        <small class="text-muted">Antigüedad</small>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+    .ticket-chat {
+        background: var(--bg-hover);
+    }
+    
+    .message-item:hover {
+        background: var(--bg-card);
+    }
+    
+    .message-content {
+        word-wrap: break-word;
+        white-space: pre-wrap;
+    }
+    
+    .breadcrumb {
+        background: transparent;
+        padding: 0;
+        margin-bottom: 1rem;
+    }
+    
+    .breadcrumb-item + .breadcrumb-item::before {
+        color: var(--text-muted);
+    }
+</style>
+`, script: `
+<script>
+    const ticketId = '${ticket.id}';
+    const guildId = '${guild.id}';
+    
+    // Socket.IO para tiempo real
+    socket.on('ticket-message', (data) => {
+        if (data.ticketId === ticketId) {
+            addMessageToChat(data.message);
+        }
+    });
+    
+    socket.on('ticket-status-changed', (data) => {
+        if (data.ticketId === ticketId) {
+            location.reload(); // Recargar para mostrar nuevo estado
+        }
+    });
+    
+    // Enviar mensaje
+    document.getElementById('sendMessageForm')?.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        
+        const messageInput = document.getElementById('messageInput');
+        const content = messageInput.value.trim();
+        
+        if (!content) return;
+        
+        try {
+            const response = await fetch('/tickets/' + guildId + '/ticket/' + ticketId + '/message', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ content })
+            });
+            
+            if (response.ok) {
+                messageInput.value = '';
+                // El mensaje se añadirá via Socket.IO
+            } else {
+                const error = await response.json();
+                showNotification('Error: ' + error.error, 'danger');
+            }
+        } catch (error) {
+            showNotification('Error enviando mensaje', 'danger');
+        }
+    });
+    
+    // Añadir mensaje al chat
+    function addMessageToChat(message) {
+        const chatContainer = document.getElementById('ticketChat');
+        const messageElement = document.createElement('div');
+        messageElement.className = 'message-item p-3 border-bottom';
+        messageElement.innerHTML = 
+            '<div class="d-flex align-items-start">' +
+                '<img src="' + message.author.avatar + '" alt="' + message.author.username + '" ' +
+                     'class="rounded-circle me-3" width="40" height="40">' +
+                '<div class="flex-grow-1">' +
+                    '<div class="d-flex align-items-center mb-1">' +
+                        '<strong class="me-2">' + message.author.username + '</strong>' +
+                        (message.author.isStaff ? '<span class="badge bg-primary me-2">Staff</span>' : '') +
+                        '<small class="text-muted">' + new Date(message.timestamp).toLocaleString() + '</small>' +
+                    '</div>' +
+                    '<div class="message-content">' + message.content + '</div>' +
+                '</div>' +
+            '</div>';
+        
+        chatContainer.appendChild(messageElement);
+        chatContainer.scrollTop = chatContainer.scrollHeight;
+    }
+    
+    // Acciones del ticket
+    async function closeTicket() {
+        if (!confirm('¿Estás seguro de que quieres cerrar este ticket?')) return;
+        
+        const reason = prompt('Razón para cerrar el ticket (opcional):') || 'Cerrado desde dashboard';
+        
+        try {
+            const response = await fetch('/tickets/' + guildId + '/ticket/' + ticketId + '/close', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ reason })
+            });
+            
+            if (response.ok) {
+                showNotification('Ticket cerrado exitosamente', 'success');
+                setTimeout(() => location.reload(), 1000);
+            } else {
+                const error = await response.json();
+                showNotification('Error: ' + error.error, 'danger');
+            }
+        } catch (error) {
+            showNotification('Error cerrando ticket', 'danger');
+        }
+    }
+    
+    async function reopenTicket() {
+        if (!confirm('¿Estás seguro de que quieres reabrir este ticket?')) return;
+        
+        try {
+            const response = await fetch('/tickets/' + guildId + '/ticket/' + ticketId + '/reopen', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' }
+            });
+            
+            if (response.ok) {
+                showNotification('Ticket reabierto exitosamente', 'success');
+                setTimeout(() => location.reload(), 1000);
+            } else {
+                const error = await response.json();
+                showNotification('Error: ' + error.error, 'danger');
+            }
+        } catch (error) {
+            showNotification('Error reabriendo ticket', 'danger');
+        }
+    }
+    
+    async function deleteTicket() {
+        if (!confirm('¿Estás seguro de que quieres ELIMINAR PERMANENTEMENTE este ticket?\\n\\nEsta acción no se puede deshacer.')) return;
+        
+        try {
+            const response = await fetch('/tickets/' + guildId + '/ticket/' + ticketId, {
+                method: 'DELETE'
+            });
+            
+            if (response.ok) {
+                showNotification('Ticket eliminado permanentemente', 'info');
+                setTimeout(() => window.location.href = '/tickets/' + guildId, 1000);
+            } else {
+                const error = await response.json();
+                showNotification('Error: ' + error.error, 'danger');
+            }
+        } catch (error) {
+            showNotification('Error eliminando ticket', 'danger');
+        }
+    }
+    
+    function downloadTranscript() {
+        window.open('/tickets/' + guildId + '/ticket/' + ticketId + '/transcript', '_blank');
+    }
+    
+    function claimTicket() {
+        showNotification('Función de reclamar ticket en desarrollo', 'info');
+    }
+    
+    function addNote() {
+        const note = prompt('Añadir nota interna (solo visible para staff):');
+        if (note) {
+            showNotification('Función de notas en desarrollo', 'info');
+        }
+    }
+    
+    function transferTicket() {
+        showNotification('Función de transferir ticket en desarrollo', 'info');
+    }
+    
+    function viewUserInfo() {
+        showNotification('Función de info de usuario en desarrollo', 'info');
+    }
+    
+    function refreshMessages() {
+        location.reload();
+    }
+    
+    // Calcular estadísticas
+    function calculateStats() {
+        const createdAt = new Date('${ticket.createdAt}');
+        const now = new Date();
+        const ageMs = now - createdAt;
+        
+        // Calcular antigüedad
+        const days = Math.floor(ageMs / (1000 * 60 * 60 * 24));
+        const hours = Math.floor((ageMs % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+        
+        let ageText = '';
+        if (days > 0) ageText += days + 'd ';
+        ageText += hours + 'h';
+        
+        document.getElementById('ticketAge').textContent = ageText;
+        
+        // Calcular tiempo de respuesta promedio (simulado)
+        document.getElementById('responseTime').textContent = '< 2h';
+    }
+    
+    // Inicializar
+    document.addEventListener('DOMContentLoaded', function() {
+        calculateStats();
+        
+        // Auto-scroll al final del chat
+        const chatContainer = document.getElementById('ticketChat');
+        if (chatContainer) {
+            chatContainer.scrollTop = chatContainer.scrollHeight;
+        }
+    });
+</script>
+` }) %>

@@ -1,0 +1,460 @@
+<%- include('../layout', { title: 'Moderación - ' + guild.name, body: `
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <div>
+        <h1 class="h3 mb-1">
+            <i class="fas fa-shield-alt me-2"></i>
+            Panel de Moderación
+        </h1>
+        <p class="text-muted mb-0">${guild.name}</p>
+    </div>
+    <a href="/guild/${guild.id}" class="btn btn-outline-secondary">
+        <i class="fas fa-arrow-left me-2"></i>Volver
+    </a>
+</div>
+
+<!-- Acciones rápidas -->
+<div class="row mb-4">
+    <div class="col-md-3">
+        <div class="card text-center">
+            <div class="card-body">
+                <i class="fas fa-user-slash fa-2x text-danger mb-2"></i>
+                <h6>Ban Usuario</h6>
+                <button class="btn btn-danger btn-sm" data-bs-toggle="modal" data-bs-target="#banModal">
+                    <i class="fas fa-ban me-1"></i>Ban
+                </button>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card text-center">
+            <div class="card-body">
+                <i class="fas fa-door-open fa-2x text-warning mb-2"></i>
+                <h6>Kick Usuario</h6>
+                <button class="btn btn-warning btn-sm" data-bs-toggle="modal" data-bs-target="#kickModal">
+                    <i class="fas fa-shoe-prints me-1"></i>Kick
+                </button>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card text-center">
+            <div class="card-body">
+                <i class="fas fa-clock fa-2x text-info mb-2"></i>
+                <h6>Timeout</h6>
+                <button class="btn btn-info btn-sm" data-bs-toggle="modal" data-bs-target="#timeoutModal">
+                    <i class="fas fa-user-clock me-1"></i>Timeout
+                </button>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card text-center">
+            <div class="card-body">
+                <i class="fas fa-exclamation-triangle fa-2x text-secondary mb-2"></i>
+                <h6>Advertir</h6>
+                <button class="btn btn-secondary btn-sm" data-bs-toggle="modal" data-bs-target="#warnModal">
+                    <i class="fas fa-exclamation me-1"></i>Warn
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Miembros del servidor -->
+<div class="row">
+    <div class="col-md-12">
+        <div class="card">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h5 class="mb-0">
+                    <i class="fas fa-users me-2"></i>
+                    Miembros del Servidor
+                </h5>
+                <div class="d-flex gap-2">
+                    <input type="text" class="form-control form-control-sm" id="searchMembers" 
+                           placeholder="Buscar miembro..." style="width: 250px;">
+                    <button class="btn btn-sm btn-primary" onclick="loadMembers()">
+                        <i class="fas fa-sync-alt"></i>
+                    </button>
+                </div>
+            </div>
+            <div class="card-body">
+                <div class="table-responsive">
+                    <table class="table table-hover">
+                        <thead>
+                            <tr>
+                                <th>Usuario</th>
+                                <th>Roles</th>
+                                <th>Se unió</th>
+                                <th>Estado</th>
+                                <th>Acciones</th>
+                            </tr>
+                        </thead>
+                        <tbody id="membersTable">
+                            <tr>
+                                <td colspan="5" class="text-center">
+                                    <div class="spinner-border spinner-border-sm me-2" role="status"></div>
+                                    Cargando miembros...
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modales -->
+<!-- Modal Ban -->
+<div class="modal fade" id="banModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title"><i class="fas fa-ban me-2"></i>Banear Usuario</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form id="banForm">
+                    <input type="hidden" id="banUserId">
+                    <div class="mb-3">
+                        <label class="form-label">Usuario</label>
+                        <input type="text" class="form-control" id="banUserName" readonly>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Razón</label>
+                        <textarea class="form-control" id="banReason" rows="3" required 
+                                  placeholder="Escribe la razón del ban..."></textarea>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Eliminar mensajes</label>
+                        <select class="form-select" id="banDeleteMessages">
+                            <option value="0">No eliminar</option>
+                            <option value="1">Último día</option>
+                            <option value="7">Últimos 7 días</option>
+                        </select>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                <button type="button" class="btn btn-danger" onclick="executeBan()">
+                    <i class="fas fa-ban me-1"></i>Banear
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal Kick -->
+<div class="modal fade" id="kickModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title"><i class="fas fa-shoe-prints me-2"></i>Expulsar Usuario</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form id="kickForm">
+                    <input type="hidden" id="kickUserId">
+                    <div class="mb-3">
+                        <label class="form-label">Usuario</label>
+                        <input type="text" class="form-control" id="kickUserName" readonly>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Razón</label>
+                        <textarea class="form-control" id="kickReason" rows="3" required
+                                  placeholder="Escribe la razón del kick..."></textarea>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                <button type="button" class="btn btn-warning" onclick="executeKick()">
+                    <i class="fas fa-shoe-prints me-1"></i>Expulsar
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal Timeout -->
+<div class="modal fade" id="timeoutModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title"><i class="fas fa-user-clock me-2"></i>Timeout Usuario</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form id="timeoutForm">
+                    <input type="hidden" id="timeoutUserId">
+                    <div class="mb-3">
+                        <label class="form-label">Usuario</label>
+                        <input type="text" class="form-control" id="timeoutUserName" readonly>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Duración</label>
+                        <select class="form-select" id="timeoutDuration" required>
+                            <option value="60000">1 minuto</option>
+                            <option value="300000">5 minutos</option>
+                            <option value="600000">10 minutos</option>
+                            <option value="3600000">1 hora</option>
+                            <option value="86400000">1 día</option>
+                            <option value="604800000">1 semana</option>
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Razón</label>
+                        <textarea class="form-control" id="timeoutReason" rows="3" required
+                                  placeholder="Escribe la razón del timeout..."></textarea>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                <button type="button" class="btn btn-info" onclick="executeTimeout()">
+                    <i class="fas fa-user-clock me-1"></i>Aplicar Timeout
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal Warn -->
+<div class="modal fade" id="warnModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title"><i class="fas fa-exclamation-triangle me-2"></i>Advertir Usuario</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form id="warnForm">
+                    <input type="hidden" id="warnUserId">
+                    <div class="mb-3">
+                        <label class="form-label">Usuario</label>
+                        <input type="text" class="form-control" id="warnUserName" readonly>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Razón</label>
+                        <textarea class="form-control" id="warnReason" rows="3" required
+                                  placeholder="Escribe la razón de la advertencia..."></textarea>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                <button type="button" class="btn btn-warning" onclick="executeWarn()">
+                    <i class="fas fa-exclamation me-1"></i>Advertir
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+`, script: `
+<script>
+    const guildId = '${guild.id}';
+    
+    // Cargar miembros
+    async function loadMembers() {
+        try {
+            const response = await fetch('/api/guild/' + guildId + '/members');
+            if (!response.ok) throw new Error('Error cargando miembros');
+            
+            const data = await response.json();
+            const members = data.members || data; // Soportar ambos formatos
+            const tbody = document.getElementById('membersTable');
+            
+            if (members.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="5" class="text-center">No se encontraron miembros</td></tr>';
+                return;
+            }
+            
+            tbody.innerHTML = members.map(member => {
+                const joinedDate = new Date(member.joinedAt).toLocaleDateString();
+                const username = member.displayName || member.username || member.tag;
+                const roles = member.roles.slice(0, 3).map(role => 
+                    '<span class="badge bg-secondary me-1">' + role.name + '</span>'
+                ).join('');
+                
+                return '<tr>' +
+                    '<td><img src="' + member.avatar + '" width="24" class="rounded-circle me-2">' + username + '</td>' +
+                    '<td>' + (roles || '<span class="text-muted">Sin roles</span>') + '</td>' +
+                    '<td>' + joinedDate + '</td>' +
+                    '<td><span class="badge bg-' + (member.status === 'online' ? 'success' : 'secondary') + '">' + member.status + '</span></td>' +
+                    '<td>' +
+                        '<div class="btn-group btn-group-sm">' +
+                            '<button class="btn btn-outline-warning" onclick="openWarnModal(\'' + member.id + '\', \'' + username + '\')"><i class="fas fa-exclamation"></i></button>' +
+                            '<button class="btn btn-outline-info" onclick="openTimeoutModal(\'' + member.id + '\', \'' + username + '\')"><i class="fas fa-clock"></i></button>' +
+                            '<button class="btn btn-outline-danger" onclick="openKickModal(\'' + member.id + '\', \'' + username + '\')"><i class="fas fa-shoe-prints"></i></button>' +
+                            '<button class="btn btn-outline-dark" onclick="openBanModal(\'' + member.id + '\', \'' + username + '\')"><i class="fas fa-ban"></i></button>' +
+                        '</div>' +
+                    '</td>' +
+                '</tr>';
+            }).join('');
+        } catch (error) {
+            console.error('Error:', error);
+            document.getElementById('membersTable').innerHTML = 
+                '<tr><td colspan="5" class="text-center text-danger">Error cargando miembros: ' + error.message + '</td></tr>';
+            showNotification('Error cargando miembros', 'danger');
+        }
+    }
+    
+    // Abrir modales
+    function openBanModal(userId, username) {
+        document.getElementById('banUserId').value = userId;
+        document.getElementById('banUserName').value = username;
+        new bootstrap.Modal(document.getElementById('banModal')).show();
+    }
+    
+    function openKickModal(userId, username) {
+        document.getElementById('kickUserId').value = userId;
+        document.getElementById('kickUserName').value = username;
+        new bootstrap.Modal(document.getElementById('kickModal')).show();
+    }
+    
+    function openTimeoutModal(userId, username) {
+        document.getElementById('timeoutUserId').value = userId;
+        document.getElementById('timeoutUserName').value = username;
+        new bootstrap.Modal(document.getElementById('timeoutModal')).show();
+    }
+    
+    function openWarnModal(userId, username) {
+        document.getElementById('warnUserId').value = userId;
+        document.getElementById('warnUserName').value = username;
+        new bootstrap.Modal(document.getElementById('warnModal')).show();
+    }
+    
+    // Ejecutar acciones
+    async function executeBan() {
+        const userId = document.getElementById('banUserId').value;
+        const reason = document.getElementById('banReason').value;
+        const deleteMessages = document.getElementById('banDeleteMessages').value;
+        
+        if (!reason) {
+            showNotification('Debes especificar una razón', 'warning');
+            return;
+        }
+        
+        try {
+            const response = await fetch('/api/guild/' + guildId + '/moderation/ban', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ userId, reason, deleteMessageDays: parseInt(deleteMessages) })
+            });
+            
+            const data = await response.json();
+            if (response.ok) {
+                showNotification('Usuario baneado exitosamente', 'success');
+                bootstrap.Modal.getInstance(document.getElementById('banModal')).hide();
+                loadMembers();
+            } else {
+                showNotification('Error: ' + data.error, 'danger');
+            }
+        } catch (error) {
+            showNotification('Error al banear usuario', 'danger');
+        }
+    }
+    
+    async function executeKick() {
+        const userId = document.getElementById('kickUserId').value;
+        const reason = document.getElementById('kickReason').value;
+        
+        if (!reason) {
+            showNotification('Debes especificar una razón', 'warning');
+            return;
+        }
+        
+        try {
+            const response = await fetch('/api/guild/' + guildId + '/moderation/kick', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ userId, reason })
+            });
+            
+            const data = await response.json();
+            if (response.ok) {
+                showNotification('Usuario expulsado exitosamente', 'success');
+                bootstrap.Modal.getInstance(document.getElementById('kickModal')).hide();
+                loadMembers();
+            } else {
+                showNotification('Error: ' + data.error, 'danger');
+            }
+        } catch (error) {
+            showNotification('Error al expulsar usuario', 'danger');
+        }
+    }
+    
+    async function executeTimeout() {
+        const userId = document.getElementById('timeoutUserId').value;
+        const duration = document.getElementById('timeoutDuration').value;
+        const reason = document.getElementById('timeoutReason').value;
+        
+        if (!reason) {
+            showNotification('Debes especificar una razón', 'warning');
+            return;
+        }
+        
+        try {
+            const response = await fetch('/api/guild/' + guildId + '/moderation/timeout', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ userId, duration: parseInt(duration), reason })
+            });
+            
+            const data = await response.json();
+            if (response.ok) {
+                showNotification('Timeout aplicado exitosamente', 'success');
+                bootstrap.Modal.getInstance(document.getElementById('timeoutModal')).hide();
+                loadMembers();
+            } else {
+                showNotification('Error: ' + data.error, 'danger');
+            }
+        } catch (error) {
+            showNotification('Error al aplicar timeout', 'danger');
+        }
+    }
+    
+    async function executeWarn() {
+        const userId = document.getElementById('warnUserId').value;
+        const reason = document.getElementById('warnReason').value;
+        
+        if (!reason) {
+            showNotification('Debes especificar una razón', 'warning');
+            return;
+        }
+        
+        try {
+            const response = await fetch('/api/guild/' + guildId + '/moderation/warn', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ userId, reason })
+            });
+            
+            const data = await response.json();
+            if (response.ok) {
+                showNotification('Advertencia enviada exitosamente', 'success');
+                bootstrap.Modal.getInstance(document.getElementById('warnModal')).hide();
+            } else {
+                showNotification('Error: ' + data.error, 'danger');
+            }
+        } catch (error) {
+            showNotification('Error al advertir usuario', 'danger');
+        }
+    }
+    
+    // Búsqueda de miembros
+    document.getElementById('searchMembers')?.addEventListener('input', function(e) {
+        const search = e.target.value.toLowerCase();
+        const rows = document.querySelectorAll('#membersTable tr');
+        
+        rows.forEach(row => {
+            const text = row.textContent.toLowerCase();
+            row.style.display = text.includes(search) ? '' : 'none';
+        });
+    });
+    
+    // Cargar miembros al iniciar
+    document.addEventListener('DOMContentLoaded', loadMembers);
+</script>
+` }) %>

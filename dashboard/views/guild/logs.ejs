@@ -1,0 +1,42 @@
+<%- include('../layout', { title: 'Logs - ' + guild.name, body: `
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <div>
+        <h1 class="h3 mb-1">
+            <i class="fas fa-clipboard-list me-2"></i>
+            Registro de Eventos
+        </h1>
+        <p class="text-muted mb-0">${guild.name}</p>
+    </div>
+    <a href="/guild/${guild.id}" class="btn btn-outline-secondary">
+        <i class="fas fa-arrow-left me-2"></i>Volver
+    </a>
+</div>
+
+<div class="row">
+    <div class="col-md-12">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0">
+                    <i class="fas fa-history me-2"></i>
+                    Historial de Actividad
+                </h5>
+            </div>
+            <div class="card-body">
+                <div class="alert alert-info">
+                    <i class="fas fa-info-circle me-2"></i>
+                    Panel de logs en desarrollo. Próximamente podrás ver todos los eventos del servidor.
+                </div>
+                
+                <h6 class="mb-3">Funciones próximamente:</h6>
+                <ul>
+                    <li>Ver logs de moderación</li>
+                    <li>Registro de acciones del bot</li>
+                    <li>Historial de mensajes eliminados</li>
+                    <li>Logs de entrada/salida de miembros</li>
+                    <li>Filtros y búsqueda avanzada</li>
+                </ul>
+            </div>
+        </div>
+    </div>
+</div>
+`, script: `` }) %>

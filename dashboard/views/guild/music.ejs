@@ -1,0 +1,42 @@
+<%- include('../layout', { title: 'Música - ' + guild.name, body: `
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <div>
+        <h1 class="h3 mb-1">
+            <i class="fas fa-music me-2"></i>
+            Control de Música
+        </h1>
+        <p class="text-muted mb-0">${guild.name}</p>
+    </div>
+    <a href="/guild/${guild.id}" class="btn btn-outline-secondary">
+        <i class="fas fa-arrow-left me-2"></i>Volver
+    </a>
+</div>
+
+<div class="row">
+    <div class="col-md-12">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0">
+                    <i class="fas fa-play-circle me-2"></i>
+                    Reproductor de Música
+                </h5>
+            </div>
+            <div class="card-body">
+                <div class="alert alert-info">
+                    <i class="fas fa-info-circle me-2"></i>
+                    Panel de control de música en desarrollo. Próximamente podrás controlar el reproductor desde aquí.
+                </div>
+                
+                <h6 class="mb-3">Funciones próximamente:</h6>
+                <ul>
+                    <li>Ver cola de reproducción actual</li>
+                    <li>Controlar reproducción (play, pause, skip)</li>
+                    <li>Gestionar volumen y configuración</li>
+                    <li>Historial de canciones reproducidas</li>
+                    <li>Estadísticas de uso</li>
+                </ul>
+            </div>
+        </div>
+    </div>
+</div>
+`, script: `` }) %>

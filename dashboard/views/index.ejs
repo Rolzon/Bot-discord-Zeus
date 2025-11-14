@@ -1,0 +1,223 @@
+<%- include('layout', { title: 'Zeus System - Bot de Discord', body: `
+<div class="hero-section text-center py-5">
+    <div class="container">
+        <div class="row justify-content-center">
+            <div class="col-lg-8">
+                <h1 class="display-4 fw-bold text-primary mb-4">
+                    <i class="fas fa-robot me-3"></i>Zeus System
+                </h1>
+                <p class="lead mb-4">
+                    Bot multi-propósito completo de Discord con IA GPT-3.5, música, tickets, 
+                    sorteos, niveles, TempVoice y mucho más.
+                </p>
+                
+                ${user ? `
+                    <a href="/dashboard" class="btn btn-primary btn-lg me-3">
+                        <i class="fas fa-tachometer-alt me-2"></i>Ir al Dashboard
+                    </a>
+                ` : `
+                    <a href="/auth/discord" class="btn btn-primary btn-lg me-3">
+                        <i class="fab fa-discord me-2"></i>Iniciar Sesión con Discord
+                    </a>
+                `}
+                
+                <a href="#features" class="btn btn-outline-primary btn-lg">
+                    <i class="fas fa-info-circle me-2"></i>Ver Características
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="container my-5" id="features">
+    <div class="row">
+        <div class="col-12 text-center mb-5">
+            <h2 class="fw-bold">Características Principales</h2>
+            <p class="text-muted">Todo lo que necesitas para gestionar tu servidor de Discord</p>
+        </div>
+    </div>
+    
+    <div class="row g-4">
+        <div class="col-md-6 col-lg-4">
+            <div class="card h-100">
+                <div class="card-body text-center">
+                    <div class="mb-3">
+                        <i class="fas fa-shield-alt fa-3x text-primary"></i>
+                    </div>
+                    <h5 class="card-title">Moderación Avanzada</h5>
+                    <p class="card-text">
+                        Sistema completo de moderación con kick, ban, timeout, advertencias,
+                        auto-moderación y protección anti-raid.
+                    </p>
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-md-6 col-lg-4">
+            <div class="card h-100">
+                <div class="card-body text-center">
+                    <div class="mb-3">
+                        <i class="fas fa-ticket-alt fa-3x text-success"></i>
+                    </div>
+                    <h5 class="card-title">Sistema de Tickets</h5>
+                    <p class="card-text">
+                        Panel completo para gestionar tickets con transcripciones automáticas,
+                        permisos personalizables y dashboard web.
+                    </p>
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-md-6 col-lg-4">
+            <div class="card h-100">
+                <div class="card-body text-center">
+                    <div class="mb-3">
+                        <i class="fas fa-brain fa-3x text-info"></i>
+                    </div>
+                    <h5 class="card-title">IA con GPT-3.5</h5>
+                    <p class="card-text">
+                        Inteligencia artificial integrada con base de conocimiento personalizable
+                        para responder preguntas automáticamente.
+                    </p>
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-md-6 col-lg-4">
+            <div class="card h-100">
+                <div class="card-body text-center">
+                    <div class="mb-3">
+                        <i class="fas fa-music fa-3x text-warning"></i>
+                    </div>
+                    <h5 class="card-title">Sistema de Música</h5>
+                    <p class="card-text">
+                        Reproductor de música completo con soporte para YouTube, Spotify,
+                        colas de reproducción y controles avanzados.
+                    </p>
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-md-6 col-lg-4">
+            <div class="card h-100">
+                <div class="card-body text-center">
+                    <div class="mb-3">
+                        <i class="fas fa-microphone fa-3x text-danger"></i>
+                    </div>
+                    <h5 class="card-title">TempVoice</h5>
+                    <p class="card-text">
+                        Canales de voz temporales que se crean automáticamente y se eliminan
+                        cuando están vacíos. Perfectos para gaming.
+                    </p>
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-md-6 col-lg-4">
+            <div class="card h-100">
+                <div class="card-body text-center">
+                    <div class="mb-3">
+                        <i class="fas fa-trophy fa-3x text-purple"></i>
+                    </div>
+                    <h5 class="card-title">Sistema de Niveles</h5>
+                    <p class="card-text">
+                        Sistema de XP y niveles para gamificar tu servidor con rankings,
+                        recompensas y progresión automática.
+                    </p>
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-md-6 col-lg-4">
+            <div class="card h-100">
+                <div class="card-body text-center">
+                    <div class="mb-3">
+                        <i class="fas fa-gift fa-3x text-pink"></i>
+                    </div>
+                    <h5 class="card-title">Sorteos</h5>
+                    <p class="card-text">
+                        Sistema completo de sorteos con múltiples ganadores, reroll automático
+                        y gestión desde el dashboard web.
+                    </p>
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-md-6 col-lg-4">
+            <div class="card h-100">
+                <div class="card-body text-center">
+                    <div class="mb-3">
+                        <i class="fas fa-database fa-3x text-secondary"></i>
+                    </div>
+                    <h5 class="card-title">Base de Datos</h5>
+                    <p class="card-text">
+                        Almacenamiento persistente con MongoDB para guardar configuraciones,
+                        estadísticas y datos de usuarios.
+                    </p>
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-md-6 col-lg-4">
+            <div class="card h-100">
+                <div class="card-body text-center">
+                    <div class="mb-3">
+                        <i class="fas fa-tachometer-alt fa-3x text-primary"></i>
+                    </div>
+                    <h5 class="card-title">Dashboard Web</h5>
+                    <p class="card-text">
+                        Panel de administración web completo con autenticación Discord OAuth2
+                        y gestión en tiempo real.
+                    </p>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="bg-light py-5 mt-5">
+    <div class="container">
+        <div class="row justify-content-center">
+            <div class="col-lg-8 text-center">
+                <h3 class="fw-bold mb-4">¿Listo para empezar?</h3>
+                <p class="mb-4">
+                    Únete a miles de servidores que ya usan Zeus System para mejorar
+                    su experiencia en Discord.
+                </p>
+                
+                ${user ? `
+                    <a href="/dashboard" class="btn btn-primary btn-lg">
+                        <i class="fas fa-rocket me-2"></i>Configurar Bot
+                    </a>
+                ` : `
+                    <a href="/auth/discord" class="btn btn-primary btn-lg">
+                        <i class="fab fa-discord me-2"></i>Iniciar Sesión
+                    </a>
+                `}
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+    .hero-section {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        margin-top: -20px;
+    }
+    
+    .text-purple { color: #6f42c1 !important; }
+    .text-pink { color: #e83e8c !important; }
+    
+    .card {
+        transition: all 0.3s ease;
+        border: none;
+        box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+    }
+    
+    .card:hover {
+        transform: translateY(-10px);
+        box-shadow: 0 8px 25px rgba(0,0,0,0.15);
+    }
+</style>
+`, script: '' }) %>

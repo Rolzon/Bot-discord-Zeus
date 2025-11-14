@@ -1,7 +1,7 @@
 {
   "prefix": "!",
-  "embedColor": "#5865F2",
-  "ownerIds": [],
+  "embedColor": "#9f0c0c",
+  "ownerIds": ["328288920825626634"],
   "moderatorRoles": ["Moderador", "Admin", "Administrador"],
   "logChannel": "logs",
   "welcomeChannel": "bienvenida",

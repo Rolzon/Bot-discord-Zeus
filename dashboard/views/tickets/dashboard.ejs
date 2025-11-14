@@ -1,0 +1,440 @@
+<%- include('../layout', { title: 'Dashboard de Tickets - ' + guild.name, body: `
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h1 class="h3 mb-0">
+        <i class="fas fa-ticket-alt me-2"></i>Dashboard de Tickets
+    </h1>
+    <div class="d-flex gap-2">
+        <button class="btn btn-outline-primary" onclick="refreshTickets()">
+            <i class="fas fa-sync-alt me-2"></i>Actualizar
+        </button>
+        <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#createTicketModal">
+            <i class="fas fa-plus me-2"></i>Crear Ticket
+        </button>
+    </div>
+</div>
+
+<!-- Estadísticas -->
+<div class="row mb-4">
+    <div class="col-md-3">
+        <div class="stats-card">
+            <div class="stats-number">${stats.totalTickets}</div>
+            <div class="stats-label">
+                <i class="fas fa-ticket-alt me-1"></i>
+                Total Tickets
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="stats-card" style="background: linear-gradient(135deg, #11998e 0%, #38ef7d 100%);">
+            <div class="stats-number">${stats.openTickets}</div>
+            <div class="stats-label">
+                <i class="fas fa-folder-open me-1"></i>
+                Tickets Abiertos
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="stats-card" style="background: linear-gradient(135deg, #fc466b 0%, #3f5efb 100%);">
+            <div class="stats-number">${stats.closedTickets}</div>
+            <div class="stats-label">
+                <i class="fas fa-folder me-1"></i>
+                Tickets Cerrados
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="stats-card" style="background: linear-gradient(135deg, #fdbb2d 0%, #22c1c3 100%);">
+            <div class="stats-number">${stats.todayTickets}</div>
+            <div class="stats-label">
+                <i class="fas fa-calendar-day me-1"></i>
+                Hoy
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Filtros -->
+<div class="card mb-4">
+    <div class="card-body">
+        <div class="row align-items-center">
+            <div class="col-md-4">
+                <div class="input-group">
+                    <span class="input-group-text"><i class="fas fa-search"></i></span>
+                    <input type="text" class="form-control" id="searchTickets" placeholder="Buscar tickets...">
+                </div>
+            </div>
+            <div class="col-md-3">
+                <select class="form-select" id="statusFilter">
+                    <option value="">Todos los estados</option>
+                    <option value="open">Abiertos</option>
+                    <option value="closed">Cerrados</option>
+                </select>
+            </div>
+            <div class="col-md-3">
+                <select class="form-select" id="categoryFilter">
+                    <option value="">Todas las categorías</option>
+                    <option value="soporte">Soporte</option>
+                    <option value="reportes">Reportes</option>
+                    <option value="sugerencias">Sugerencias</option>
+                </select>
+            </div>
+            <div class="col-md-2">
+                <button class="btn btn-outline-secondary w-100" onclick="clearFilters()">
+                    <i class="fas fa-times me-1"></i>Limpiar
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Tabs -->
+<ul class="nav nav-tabs mb-4" id="ticketTabs" role="tablist">
+    <li class="nav-item" role="presentation">
+        <button class="nav-link active" id="open-tab" data-bs-toggle="tab" data-bs-target="#open-tickets" type="button">
+            <i class="fas fa-folder-open me-2"></i>
+            Tickets Abiertos (${tickets.open.length})
+        </button>
+    </li>
+    <li class="nav-item" role="presentation">
+        <button class="nav-link" id="closed-tab" data-bs-toggle="tab" data-bs-target="#closed-tickets" type="button">
+            <i class="fas fa-folder me-2"></i>
+            Tickets Cerrados (${tickets.closed.length})
+        </button>
+    </li>
+</ul>
+
+<!-- Tab Content -->
+<div class="tab-content" id="ticketTabsContent">
+    <!-- Tickets Abiertos -->
+    <div class="tab-pane fade show active" id="open-tickets">
+        ${tickets.open.length === 0 ? `
+            <div class="text-center py-5">
+                <i class="fas fa-ticket-alt fa-4x text-muted mb-3"></i>
+                <h4>No hay tickets abiertos</h4>
+                <p class="text-muted">Todos los tickets están cerrados o no hay tickets creados.</p>
+            </div>
+        ` : `
+            <div class="row g-3" id="openTicketsList">
+                ${tickets.open.map(ticket => `
+                    <div class="col-md-6 col-lg-4 ticket-card" data-ticket-id="${ticket.id}" data-status="${ticket.status}" data-category="${ticket.category}">
+                        <div class="card h-100">
+                            <div class="card-header d-flex justify-content-between align-items-center">
+                                <h6 class="mb-0">${ticket.name}</h6>
+                                <span class="badge bg-success">Abierto</span>
+                            </div>
+                            <div class="card-body">
+                                <p class="text-muted small mb-2">
+                                    <i class="fas fa-folder me-1"></i>${ticket.category}
+                                </p>
+                                <p class="text-muted small mb-2">
+                                    <i class="fas fa-users me-1"></i>${ticket.memberCount} miembros
+                                </p>
+                                <p class="text-muted small mb-3">
+                                    <i class="fas fa-clock me-1"></i>Creado ${new Date(ticket.createdAt).toLocaleDateString()}
+                                </p>
+                                ${ticket.lastMessage ? `
+                                    <div class="bg-light p-2 rounded mb-3">
+                                        <small class="text-muted d-block">${ticket.lastMessage.author}:</small>
+                                        <small>${ticket.lastMessage.content}</small>
+                                    </div>
+                                ` : ''}
+                            </div>
+                            <div class="card-footer">
+                                <div class="d-grid gap-2">
+                                    <a href="/tickets/${guild.id}/ticket/${ticket.id}" class="btn btn-primary btn-sm">
+                                        <i class="fas fa-eye me-1"></i>Ver Ticket
+                                    </a>
+                                    <div class="btn-group">
+                                        <button class="btn btn-outline-warning btn-sm" onclick="closeTicket('${ticket.id}')">
+                                            <i class="fas fa-lock me-1"></i>Cerrar
+                                        </button>
+                                        <button class="btn btn-outline-danger btn-sm" onclick="deleteTicket('${ticket.id}')">
+                                            <i class="fas fa-trash me-1"></i>Eliminar
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                `).join('')}
+            </div>
+        `}
+    </div>
+
+    <!-- Tickets Cerrados -->
+    <div class="tab-pane fade" id="closed-tickets">
+        ${tickets.closed.length === 0 ? `
+            <div class="text-center py-5">
+                <i class="fas fa-folder fa-4x text-muted mb-3"></i>
+                <h4>No hay tickets cerrados</h4>
+                <p class="text-muted">No se han cerrado tickets aún.</p>
+            </div>
+        ` : `
+            <div class="row g-3" id="closedTicketsList">
+                ${tickets.closed.map(ticket => `
+                    <div class="col-md-6 col-lg-4 ticket-card" data-ticket-id="${ticket.id}" data-status="${ticket.status}" data-category="${ticket.category}">
+                        <div class="card h-100">
+                            <div class="card-header d-flex justify-content-between align-items-center">
+                                <h6 class="mb-0">${ticket.name}</h6>
+                                <span class="badge bg-secondary">Cerrado</span>
+                            </div>
+                            <div class="card-body">
+                                <p class="text-muted small mb-2">
+                                    <i class="fas fa-folder me-1"></i>${ticket.category}
+                                </p>
+                                <p class="text-muted small mb-2">
+                                    <i class="fas fa-users me-1"></i>${ticket.memberCount} miembros
+                                </p>
+                                <p class="text-muted small mb-3">
+                                    <i class="fas fa-clock me-1"></i>Creado ${new Date(ticket.createdAt).toLocaleDateString()}
+                                </p>
+                                ${ticket.lastMessage ? `
+                                    <div class="bg-light p-2 rounded mb-3">
+                                        <small class="text-muted d-block">${ticket.lastMessage.author}:</small>
+                                        <small>${ticket.lastMessage.content}</small>
+                                    </div>
+                                ` : ''}
+                            </div>
+                            <div class="card-footer">
+                                <div class="d-grid gap-2">
+                                    <a href="/tickets/${guild.id}/ticket/${ticket.id}" class="btn btn-outline-primary btn-sm">
+                                        <i class="fas fa-eye me-1"></i>Ver Ticket
+                                    </a>
+                                    <div class="btn-group">
+                                        <button class="btn btn-outline-success btn-sm" onclick="reopenTicket('${ticket.id}')">
+                                            <i class="fas fa-unlock me-1"></i>Reabrir
+                                        </button>
+                                        <button class="btn btn-outline-danger btn-sm" onclick="deleteTicket('${ticket.id}')">
+                                            <i class="fas fa-trash me-1"></i>Eliminar
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                `).join('')}
+            </div>
+        `}
+    </div>
+</div>
+
+<!-- Modal para crear ticket -->
+<div class="modal fade" id="createTicketModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Crear Nuevo Ticket</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form id="createTicketForm">
+                    <div class="mb-3">
+                        <label for="ticketTitle" class="form-label">Título del Ticket</label>
+                        <input type="text" class="form-control" id="ticketTitle" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="ticketCategory" class="form-label">Categoría</label>
+                        <select class="form-select" id="ticketCategory" required>
+                            <option value="">Seleccionar categoría</option>
+                            <option value="soporte">Soporte</option>
+                            <option value="reportes">Reportes</option>
+                            <option value="sugerencias">Sugerencias</option>
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label for="ticketDescription" class="form-label">Descripción</label>
+                        <textarea class="form-control" id="ticketDescription" rows="3" required></textarea>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                <button type="button" class="btn btn-primary" onclick="createTicket()">Crear Ticket</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+    .ticket-card {
+        transition: all 0.3s ease;
+    }
+    
+    .ticket-card:hover {
+        transform: translateY(-2px);
+    }
+    
+    .ticket-card .card {
+        border-left: 4px solid #5865f2;
+    }
+    
+    .ticket-card[data-status="closed"] .card {
+        border-left-color: #6c757d;
+        opacity: 0.8;
+    }
+</style>
+`, script: `
+<script>
+    // Socket.IO events for real-time updates
+    socket.on('ticket-closed', (data) => {
+        showNotification('Ticket cerrado: ' + data.ticketId, 'warning');
+        refreshTickets();
+    });
+
+    socket.on('ticket-reopened', (data) => {
+        showNotification('Ticket reabierto: ' + data.ticketId, 'success');
+        refreshTickets();
+    });
+
+    socket.on('ticket-deleted', (data) => {
+        showNotification('Ticket eliminado: ' + data.ticketName, 'info');
+        refreshTickets();
+    });
+
+    // Filtros
+    document.getElementById('searchTickets').addEventListener('input', filterTickets);
+    document.getElementById('statusFilter').addEventListener('change', filterTickets);
+    document.getElementById('categoryFilter').addEventListener('change', filterTickets);
+
+    function filterTickets() {
+        const search = document.getElementById('searchTickets').value.toLowerCase();
+        const status = document.getElementById('statusFilter').value;
+        const category = document.getElementById('categoryFilter').value;
+        
+        const tickets = document.querySelectorAll('.ticket-card');
+        
+        tickets.forEach(ticket => {
+            const ticketName = ticket.querySelector('.card-header h6').textContent.toLowerCase();
+            const ticketStatus = ticket.dataset.status;
+            const ticketCategory = ticket.dataset.category;
+            
+            const matchesSearch = ticketName.includes(search);
+            const matchesStatus = !status || ticketStatus === status;
+            const matchesCategory = !category || ticketCategory === category;
+            
+            if (matchesSearch && matchesStatus && matchesCategory) {
+                ticket.style.display = 'block';
+            } else {
+                ticket.style.display = 'none';
+            }
+        });
+    }
+
+    function clearFilters() {
+        document.getElementById('searchTickets').value = '';
+        document.getElementById('statusFilter').value = '';
+        document.getElementById('categoryFilter').value = '';
+        filterTickets();
+    }
+
+    // Acciones de tickets
+    async function closeTicket(ticketId) {
+        if (!confirm('¿Estás seguro de que quieres cerrar este ticket?')) return;
+        
+        const reason = prompt('Razón para cerrar el ticket (opcional):') || 'Cerrado por administrador';
+        
+        try {
+            const response = await fetch('/tickets/${guild.id}/ticket/' + ticketId + '/close', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ reason })
+            });
+            
+            if (response.ok) {
+                showNotification('Ticket cerrado exitosamente', 'success');
+                refreshTickets();
+            } else {
+                const error = await response.json();
+                showNotification('Error: ' + error.error, 'danger');
+            }
+        } catch (error) {
+            showNotification('Error cerrando ticket', 'danger');
+        }
+    }
+
+    async function reopenTicket(ticketId) {
+        if (!confirm('¿Estás seguro de que quieres reabrir este ticket?')) return;
+        
+        try {
+            const response = await fetch('/tickets/${guild.id}/ticket/' + ticketId + '/reopen', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' }
+            });
+            
+            if (response.ok) {
+                showNotification('Ticket reabierto exitosamente', 'success');
+                refreshTickets();
+            } else {
+                const error = await response.json();
+                showNotification('Error: ' + error.error, 'danger');
+            }
+        } catch (error) {
+            showNotification('Error reabriendo ticket', 'danger');
+        }
+    }
+
+    async function deleteTicket(ticketId) {
+        if (!confirm('¿Estás seguro de que quieres ELIMINAR PERMANENTEMENTE este ticket?\\n\\nEsta acción no se puede deshacer.')) return;
+        
+        try {
+            const response = await fetch('/tickets/${guild.id}/ticket/' + ticketId, {
+                method: 'DELETE'
+            });
+            
+            if (response.ok) {
+                showNotification('Ticket eliminado permanentemente', 'info');
+                refreshTickets();
+            } else {
+                const error = await response.json();
+                showNotification('Error: ' + error.error, 'danger');
+            }
+        } catch (error) {
+            showNotification('Error eliminando ticket', 'danger');
+        }
+    }
+
+    async function createTicket() {
+        const title = document.getElementById('ticketTitle').value;
+        const category = document.getElementById('ticketCategory').value;
+        const description = document.getElementById('ticketDescription').value;
+        
+        if (!title || !category || !description) {
+            showNotification('Por favor completa todos los campos', 'warning');
+            return;
+        }
+        
+        // Esta función crearía un ticket manualmente desde el dashboard
+        // En una implementación real, se conectaría con la API del bot
+        showNotification('Función de crear ticket desde dashboard en desarrollo', 'info');
+        
+        // Cerrar modal
+        const modal = bootstrap.Modal.getInstance(document.getElementById('createTicketModal'));
+        modal.hide();
+        
+        // Limpiar formulario
+        document.getElementById('createTicketForm').reset();
+    }
+
+    function refreshTickets() {
+        // Recargar la página para obtener datos actualizados
+        window.location.reload();
+    }
+
+    // Actualizar estadísticas cada 30 segundos
+    setInterval(async () => {
+        try {
+            const response = await fetch('/tickets/${guild.id}/stats');
+            if (response.ok) {
+                const stats = await response.json();
+                // Actualizar estadísticas en tiempo real
+                document.querySelector('.stats-card:nth-child(1) .stats-number').textContent = stats.total;
+                document.querySelector('.stats-card:nth-child(2) .stats-number').textContent = stats.open;
+                document.querySelector('.stats-card:nth-child(3) .stats-number').textContent = stats.closed;
+                document.querySelector('.stats-card:nth-child(4) .stats-number').textContent = stats.today;
+            }
+        } catch (error) {
+            console.error('Error actualizando estadísticas:', error);
+        }
+    }, 30000);
+</script>
+` }) %>
