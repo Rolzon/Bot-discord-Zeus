@@ -255,6 +255,13 @@
 <script>
     const guildId = '${guild.id}';
     
+    // Helper para escapar HTML
+    function escapeHtml(text) {
+        const div = document.createElement('div');
+        div.textContent = text;
+        return div.innerHTML;
+    }
+    
     // Cargar miembros
     async function loadMembers() {
         try {
@@ -272,25 +279,49 @@
             
             tbody.innerHTML = members.map(member => {
                 const joinedDate = new Date(member.joinedAt).toLocaleDateString();
-                const username = member.displayName || member.username || member.tag;
+                const username = escapeHtml(member.displayName || member.username || member.tag);
+                const userId = escapeHtml(member.id);
                 const roles = member.roles.slice(0, 3).map(role => 
-                    '<span class="badge bg-secondary me-1">' + role.name + '</span>'
+                    '<span class="badge bg-secondary me-1">' + escapeHtml(role.name) + '</span>'
                 ).join('');
                 
-                return '<tr>' +
+                const tr = document.createElement('tr');
+                tr.innerHTML = 
                     '<td><img src="' + member.avatar + '" width="24" class="rounded-circle me-2">' + username + '</td>' +
                     '<td>' + (roles || '<span class="text-muted">Sin roles</span>') + '</td>' +
                     '<td>' + joinedDate + '</td>' +
                     '<td><span class="badge bg-' + (member.status === 'online' ? 'success' : 'secondary') + '">' + member.status + '</span></td>' +
-                    '<td>' +
-                        '<div class="btn-group btn-group-sm">' +
-                            '<button class="btn btn-outline-warning" onclick="openWarnModal(\'' + member.id + '\', \'' + username + '\')"><i class="fas fa-exclamation"></i></button>' +
-                            '<button class="btn btn-outline-info" onclick="openTimeoutModal(\'' + member.id + '\', \'' + username + '\')"><i class="fas fa-clock"></i></button>' +
-                            '<button class="btn btn-outline-danger" onclick="openKickModal(\'' + member.id + '\', \'' + username + '\')"><i class="fas fa-shoe-prints"></i></button>' +
-                            '<button class="btn btn-outline-dark" onclick="openBanModal(\'' + member.id + '\', \'' + username + '\')"><i class="fas fa-ban"></i></button>' +
-                        '</div>' +
-                    '</td>' +
-                '</tr>';
+                    '<td><div class="btn-group btn-group-sm"></div></td>';
+                
+                // Añadir botones con event listeners en lugar de onclick inline
+                const btnGroup = tr.querySelector('.btn-group');
+                
+                const btnWarn = document.createElement('button');
+                btnWarn.className = 'btn btn-outline-warning';
+                btnWarn.innerHTML = '<i class="fas fa-exclamation"></i>';
+                btnWarn.onclick = () => openWarnModal(member.id, username);
+                
+                const btnTimeout = document.createElement('button');
+                btnTimeout.className = 'btn btn-outline-info';
+                btnTimeout.innerHTML = '<i class="fas fa-clock"></i>';
+                btnTimeout.onclick = () => openTimeoutModal(member.id, username);
+                
+                const btnKick = document.createElement('button');
+                btnKick.className = 'btn btn-outline-danger';
+                btnKick.innerHTML = '<i class="fas fa-shoe-prints"></i>';
+                btnKick.onclick = () => openKickModal(member.id, username);
+                
+                const btnBan = document.createElement('button');
+                btnBan.className = 'btn btn-outline-dark';
+                btnBan.innerHTML = '<i class="fas fa-ban"></i>';
+                btnBan.onclick = () => openBanModal(member.id, username);
+                
+                btnGroup.appendChild(btnWarn);
+                btnGroup.appendChild(btnTimeout);
+                btnGroup.appendChild(btnKick);
+                btnGroup.appendChild(btnBan);
+                
+                return tr.outerHTML;
             }).join('');
         } catch (error) {
             console.error('Error:', error);
