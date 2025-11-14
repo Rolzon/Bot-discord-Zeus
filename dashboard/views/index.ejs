@@ -3,9 +3,7 @@
     <div class="container">
         <div class="row justify-content-center">
             <div class="col-lg-8">
-                <h1 class="display-4 fw-bold text-primary mb-4">
-                    <i class="fas fa-robot me-3"></i>Zeus System
-                </h1>
+                <div class="hero-logo-slot mb-4"></div>
                 <p class="lead mb-4">
                     Bot multi-propósito completo de Discord con IA GPT-3.5, música, tickets, 
                     sorteos, niveles, TempVoice y mucho más.
@@ -197,14 +195,17 @@
 
 <style>
     .hero-section {
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        /* por defecto degradado morado, pero se puede sobrescribir con --hero-bg-image */
+        background-image: var(--hero-bg-image, linear-gradient(135deg, #667eea 0%, #764ba2 100%));
+        background-size: cover;
+        background-position: center;
         color: white !important;
         margin-top: -20px;
         /* compensar el padding de .main-content para que llegue al borde */
         margin-left: -1rem;
         margin-right: -1rem;
-        padding-top: 4rem;
-        padding-bottom: 5rem;
+        padding-top: 6rem;
+        padding-bottom: 7rem;
     }
     
     /* Hero a ancho completo sin espacios laterales */
@@ -214,9 +215,14 @@
         padding-right: 0;
     }
     
-    .hero-section h1,
     .hero-section p {
         color: white !important;
+    }
+    
+    .hero-logo-slot {
+        width: 260px;
+        height: 80px;
+        margin: 0 auto;
     }
     
     .text-purple { color: #6f42c1 !important; }
