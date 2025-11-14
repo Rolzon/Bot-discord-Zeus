@@ -3,7 +3,7 @@
     <div>
         <h1 class="h3 mb-1">
             <i class="fas fa-trophy me-2"></i>
-            Sistema de Niveles
+            Sistema de Niveles y XP
         </h1>
         <p class="text-muted mb-0">${guild.name}</p>
     </div>
@@ -12,31 +12,135 @@
     </a>
 </div>
 
-<div class="row">
-    <div class="col-md-12">
+<!-- Estadísticas -->
+<div class="row mb-4">
+    <div class="col-md-3">
         <div class="card">
-            <div class="card-header">
-                <h5 class="mb-0">
-                    <i class="fas fa-chart-line me-2"></i>
-                    Gestión de Niveles y XP
-                </h5>
+            <div class="card-body text-center">
+                <i class="fas fa-users fa-2x text-primary mb-2"></i>
+                <h6>Total Usuarios</h6>
+                <h3 id="totalUsers">-</h3>
             </div>
-            <div class="card-body">
-                <div class="alert alert-info">
-                    <i class="fas fa-info-circle me-2"></i>
-                    Panel de niveles en desarrollo. Próximamente podrás gestionar el sistema de XP desde aquí.
-                </div>
-                
-                <h6 class="mb-3">Funciones próximamente:</h6>
-                <ul>
-                    <li>Ver tabla de clasificación (leaderboard)</li>
-                    <li>Gestionar XP de usuarios</li>
-                    <li>Configurar recompensas por nivel</li>
-                    <li>Roles automáticos por nivel</li>
-                    <li>Estadísticas y gráficos de progresión</li>
-                </ul>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card">
+            <div class="card-body text-center">
+                <i class="fas fa-star fa-2x text-warning mb-2"></i>
+                <h6>Nivel Promedio</h6>
+                <h3 id="avgLevel">-</h3>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card">
+            <div class="card-body text-center">
+                <i class="fas fa-fire fa-2x text-danger mb-2"></i>
+                <h6>XP Total</h6>
+                <h3 id="totalXP">-</h3>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card">
+            <div class="card-body text-center">
+                <i class="fas fa-crown fa-2x text-success mb-2"></i>
+                <h6>Nivel Máximo</h6>
+                <h3 id="maxLevel">-</h3>
             </div>
         </div>
     </div>
 </div>
-`, script: `` }) %>
+
+<!-- Leaderboard -->
+<div class="row">
+    <div class="col-md-12">
+        <div class="card">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h5 class="mb-0">
+                    <i class="fas fa-medal me-2"></i>
+                    Tabla de Clasificación
+                </h5>
+                <button class="btn btn-sm btn-primary" onclick="loadLeaderboard()">
+                    <i class="fas fa-sync-alt"></i>
+                </button>
+            </div>
+            <div class="card-body">
+                <div class="table-responsive">
+                    <table class="table table-hover">
+                        <thead>
+                            <tr>
+                                <th style="width: 50px;">Rank</th>
+                                <th>Usuario</th>
+                                <th>Nivel</th>
+                                <th>XP</th>
+                                <th>Mensajes</th>
+                                <th>Progreso</th>
+                            </tr>
+                        </thead>
+                        <tbody id="leaderboardTable">
+                            <tr>
+                                <td colspan="6" class="text-center">
+                                    <div class="spinner-border spinner-border-sm me-2" role="status"></div>
+                                    Cargando clasificación...
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+`, script: `
+<script>
+    const guildId = '${guild.id}';
+    
+    function escapeHtml(text) {
+        const div = document.createElement('div');
+        div.textContent = text;
+        return div.innerHTML;
+    }
+    
+    async function loadLeaderboard() {
+        try {
+            const response = await fetch('/api/guild/' + guildId + '/levels/leaderboard');
+            if (!response.ok) throw new Error('Error cargando leaderboard');
+            
+            const data = await response.json();
+            const tbody = document.getElementById('leaderboardTable');
+            
+            if (!data.leaderboard || data.leaderboard.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="6" class="text-center">No hay datos de niveles aún</td></tr>';
+                return;
+            }
+            
+            document.getElementById('totalUsers').textContent = data.stats.totalUsers;
+            document.getElementById('avgLevel').textContent = data.stats.avgLevel.toFixed(1);
+            document.getElementById('totalXP').textContent = data.stats.totalXP.toLocaleString();
+            document.getElementById('maxLevel').textContent = data.stats.maxLevel;
+            
+            tbody.innerHTML = data.leaderboard.map((user, index) => {
+                const progress = ((user.xp % 100) / 100) * 100;
+                const rankIcon = index === 0 ? '🥇' : index === 1 ? '🥈' : index === 2 ? '🥉' : (index + 1);
+                
+                return '<tr>' +
+                    '<td class="text-center"><strong>' + rankIcon + '</strong></td>' +
+                    '<td><img src="' + user.avatar + '" width="32" class="rounded-circle me-2">' + escapeHtml(user.username) + '</td>' +
+                    '<td><span class="badge bg-primary">Nivel ' + user.level + '</span></td>' +
+                    '<td>' + user.xp.toLocaleString() + ' XP</td>' +
+                    '<td>' + user.messageCount + '</td>' +
+                    '<td><div class="progress" style="height: 20px;"><div class="progress-bar" role="progressbar" style="width: ' + progress + '%">' + progress.toFixed(0) + '%</div></div></td>' +
+                '</tr>';
+            }).join('');
+        } catch (error) {
+            console.error('Error:', error);
+            document.getElementById('leaderboardTable').innerHTML = 
+                '<tr><td colspan="6" class="text-center text-danger">Error cargando datos</td></tr>';
+            showNotification('Error cargando leaderboard', 'danger');
+        }
+    }
+    
+    document.addEventListener('DOMContentLoaded', loadLeaderboard);
+</script>
+` }) %>
