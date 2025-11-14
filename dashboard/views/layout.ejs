@@ -121,6 +121,12 @@
             backdrop-filter: blur(20px);
             border-bottom: 1px solid var(--border-color);
             box-shadow: var(--shadow-sm);
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            z-index: 1000;
+            height: 56px;
         }
 
         .navbar-brand {
@@ -136,6 +142,17 @@
             min-height: 100vh;
             box-shadow: var(--shadow-lg);
             backdrop-filter: blur(20px);
+            position: fixed;
+            top: 56px;
+            left: 0;
+            width: 250px;
+            height: calc(100vh - 56px);
+            overflow-y: auto;
+            z-index: 100;
+        }
+        
+        .sidebar .p-3 {
+            padding: 0.75rem !important;
         }
 
         .sidebar .nav-link {
@@ -169,10 +186,16 @@
         }
 
         .main-content {
-            padding: 1.5rem;
-            padding-top: 1rem;
+            padding: 1rem;
+            padding-top: 0.5rem;
             background: transparent;
-            min-height: calc(100vh - 70px);
+            min-height: calc(100vh - 56px);
+            margin-top: 56px;
+        }
+        
+        .col-lg-10.offset-lg-2 {
+            margin-left: 250px;
+            max-width: calc(100% - 250px);
         }
 
         /* Tarjetas modernas */
@@ -327,6 +350,10 @@
             height: 48px;
             border-radius: 50%;
         }
+        
+        .sidebar .text-center {
+            margin-bottom: 0.5rem !important;
+        }
 
         .status-online { color: #43b581; }
         .status-idle { color: #faa61a; }
@@ -373,13 +400,9 @@
 
         @media (max-width: 768px) {
             .sidebar {
-                position: fixed;
-                top: 0;
                 left: -250px;
-                width: 250px;
-                height: 100vh;
-                z-index: 1000;
                 transition: left 0.3s ease;
+                z-index: 1001;
             }
             
             .sidebar.show {
@@ -387,7 +410,13 @@
             }
             
             .main-content {
-                margin-left: 0;
+                margin-left: 0 !important;
+                max-width: 100% !important;
+            }
+            
+            .col-lg-10.offset-lg-2 {
+                margin-left: 0 !important;
+                max-width: 100% !important;
             }
         }
     </style>
