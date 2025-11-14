@@ -16,12 +16,14 @@
     
     <style>
         :root {
+            /* Color principal personalizable */
+            --accent-color: #5865f2;
+            
             /* Tema por defecto - Claro Moderno */
-            --primary-color: #6366f1;
-            --primary-dark: #4f46e5;
-            --primary-light: #8b5cf6;
+            --primary-color: var(--accent-color);
+            --primary-dark: #4752c4;
+            --primary-light: #7983f5;
             --secondary-color: #10b981;
-            --accent-color: #f59e0b;
             --danger-color: #ef4444;
             --warning-color: #f97316;
             --success-color: #22c55e;
@@ -140,14 +142,15 @@
             background: var(--bg-card);
             border-right: 1px solid var(--border-color);
             min-height: 100vh;
-            box-shadow: var(--shadow-lg);
+            box-shadow: 2px 0 10px rgba(0, 0, 0, 0.05);
             backdrop-filter: blur(20px);
             position: fixed;
             top: 56px;
             left: 0;
-            width: 250px;
+            width: 240px;
             height: calc(100vh - 56px);
             overflow-y: auto;
+            overflow-x: hidden;
             z-index: 100;
         }
         
@@ -161,32 +164,47 @@
 
         .sidebar .nav-link {
             color: var(--text-secondary);
-            padding: 0.75rem 1.5rem;
-            margin: 0.25rem 1rem;
-            border-radius: var(--radius-lg);
-            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            padding: 0.65rem 1.25rem;
+            margin: 0.15rem 0.75rem;
+            border-radius: 8px;
+            transition: all 0.2s ease;
             font-weight: 500;
+            font-size: 0.9rem;
             display: flex;
             align-items: center;
             text-decoration: none;
+            position: relative;
         }
 
         .sidebar .nav-link:hover {
-            background: var(--bg-hover);
+            background: rgba(88, 101, 242, 0.08);
             color: var(--primary-color);
-            transform: translateX(4px);
+            transform: translateX(2px);
         }
 
         .sidebar .nav-link.active {
-            background: linear-gradient(135deg, var(--primary-color), var(--primary-light));
-            color: var(--text-white);
-            box-shadow: var(--shadow-md);
+            background: var(--primary-color);
+            color: white;
+            box-shadow: 0 2px 8px rgba(88, 101, 242, 0.3);
+        }
+        
+        .sidebar .nav-link.active::before {
+            content: '';
+            position: absolute;
+            left: 0;
+            top: 50%;
+            transform: translateY(-50%);
+            width: 3px;
+            height: 70%;
+            background: white;
+            border-radius: 0 3px 3px 0;
         }
 
         .sidebar .nav-link i {
-            width: 20px;
-            margin-right: 12px;
-            font-size: 1.1rem;
+            width: 18px;
+            margin-right: 10px;
+            font-size: 1rem;
+            text-align: center;
         }
 
         .main-content {
@@ -198,32 +216,32 @@
         }
         
         .col-lg-10.offset-lg-2 {
-            margin-left: 250px;
-            max-width: calc(100% - 250px);
+            margin-left: 240px;
+            max-width: calc(100% - 240px);
         }
 
         /* Tarjetas modernas */
         .card {
             background: var(--bg-card);
             border: 1px solid var(--border-color);
-            border-radius: var(--radius-xl);
-            box-shadow: var(--shadow-lg);
-            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            border-radius: 12px;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+            transition: all 0.2s ease;
             overflow: hidden;
         }
 
         .card:hover {
-            transform: translateY(-8px);
-            box-shadow: var(--shadow-xl);
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.12);
         }
 
         .card-header {
-            background: linear-gradient(135deg, var(--primary-color), var(--primary-light));
-            color: var(--text-white);
-            border: none;
-            padding: 1.5rem;
+            background: var(--bg-card);
+            color: var(--text-primary);
+            border-bottom: 1px solid var(--border-color);
+            padding: 1rem 1.25rem;
             font-weight: 600;
-            font-size: 1.1rem;
+            font-size: 1rem;
         }
 
         .card-body {
@@ -438,6 +456,13 @@
             </a>
             
             <div class="navbar-nav ms-auto d-flex align-items-center">
+                <!-- Selector de color -->
+                <div class="nav-item me-3">
+                    <label for="accentColorPicker" class="btn btn-outline-secondary btn-sm" title="Cambiar color principal">
+                        <i class="fas fa-palette me-1"></i>
+                        <input type="color" id="accentColorPicker" value="#5865f2" style="width: 0; height: 0; opacity: 0; position: absolute;">
+                    </label>
+                </div>
                 <% if (user) { %>
                     <div class="nav-item dropdown">
                         <a class="nav-link dropdown-toggle d-flex align-items-center" href="#" role="button" data-bs-toggle="dropdown">
@@ -658,6 +683,22 @@
             }
         }, 30000);
 
+        // Sistema de color personalizable
+        const accentColorPicker = document.getElementById('accentColorPicker');
+        if (accentColorPicker) {
+            // Cargar color guardado
+            const savedColor = localStorage.getItem('accent-color') || '#5865f2';
+            accentColorPicker.value = savedColor;
+            document.documentElement.style.setProperty('--accent-color', savedColor);
+            
+            // Actualizar color al cambiar
+            accentColorPicker.addEventListener('input', (e) => {
+                const color = e.target.value;
+                document.documentElement.style.setProperty('--accent-color', color);
+                localStorage.setItem('accent-color', color);
+            });
+        }
+        
         // Inicializar tema al cargar
         document.addEventListener('DOMContentLoaded', loadTheme);
     </script>
