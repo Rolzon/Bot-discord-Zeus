@@ -50,23 +50,55 @@
 `, script: `
 <script>
 const guildId = '${guild.id}';
+
 async function loadGiveaways() {
     try {
         const res = await fetch('/api/guild/' + guildId + '/giveaways');
         const data = await res.json();
+
         document.getElementById('activeGiveaways').textContent = data.active || 0;
         document.getElementById('totalParticipants').textContent = data.participants || 0;
         document.getElementById('completedGiveaways').textContent = data.completed || 0;
+
         const tbody = document.getElementById('giveawaysTable');
         if (!data.giveaways || data.giveaways.length === 0) {
             tbody.innerHTML = '<tr><td colspan="6" class="text-center">No hay sorteos</td></tr>';
             return;
         }
-        tbody.innerHTML = data.giveaways.map(g => '<tr><td>' + g.prize + '</td><td>' + g.winners + '</td><td>' + new Date(g.endsAt).toLocaleString() + '</td><td>' + g.participants + '</td><td><span class="badge bg-' + (g.active ? 'success' : 'secondary') + '">' + (g.active ? 'Activo' : 'Finalizado') + '</span></td><td><button class="btn btn-sm btn-danger" onclick="endGiveaway(\'' + g.id + '\')"><i class="fas fa-stop"></i></button></td></tr>').join('');
+
+        // Construir filas sin onclick embebidos
+        tbody.innerHTML = data.giveaways.map(g => {
+            const endsAt = g.endsAt ? new Date(g.endsAt).toLocaleString() : 'N/A';
+            const statusBadge = '<span class="badge bg-' + (g.active ? 'success' : 'secondary') + '">' + (g.active ? 'Activo' : 'Finalizado') + '</span>';
+
+            return (
+                '<tr>' +
+                    '<td>' + g.prize + '</td>' +
+                    '<td>' + g.winners + '</td>' +
+                    '<td>' + endsAt + '</td>' +
+                    '<td>' + g.participants + '</td>' +
+                    '<td>' + statusBadge + '</td>' +
+                    '<td>' +
+                        '<button class="btn btn-sm btn-danger btn-end-giveaway" data-giveaway-id="' + g.id + '">' +
+                            '<i class="fas fa-stop"></i>' +
+                        '</button>' +
+                    '</td>' +
+                '</tr>'
+            );
+        }).join('');
+
+        // Añadir listeners a los botones
+        tbody.querySelectorAll('.btn-end-giveaway').forEach(btn => {
+            btn.addEventListener('click', () => {
+                const id = btn.getAttribute('data-giveaway-id');
+                if (id) endGiveaway(id);
+            });
+        });
     } catch (error) {
         document.getElementById('giveawaysTable').innerHTML = '<tr><td colspan="6" class="text-center text-danger">Error cargando sorteos</td></tr>';
     }
 }
+
 async function createGiveaway() {
     const prize = document.getElementById('giveawayPrize').value;
     const duration = document.getElementById('giveawayDuration').value;
@@ -99,6 +131,7 @@ async function endGiveaway(id) {
         showNotification('Error al finalizar sorteo', 'danger');
     }
 }
+
 document.addEventListener('DOMContentLoaded', loadGiveaways);
 </script>
 ` }) %>
