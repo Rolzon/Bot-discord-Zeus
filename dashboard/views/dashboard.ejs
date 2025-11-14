@@ -9,7 +9,7 @@ ${typeof error !== 'undefined' && error ? `
 ` : ''}
 
 <div class="row mb-4 dashboard-stats-row">
-    <div class="col-md-3">
+    <div class="col-lg-3">
         <div class="stats-card">
             <div class="stats-number">${guilds.length}</div>
             <div class="stats-label">
@@ -18,7 +18,7 @@ ${typeof error !== 'undefined' && error ? `
             </div>
         </div>
     </div>
-    <div class="col-md-3">
+    <div class="col-lg-3">
         <div class="stats-card">
             <div class="stats-number">${botGuilds}</div>
             <div class="stats-label">
@@ -193,26 +193,40 @@ ${typeof error !== 'undefined' && error ? `
         color: rgba(255, 255, 255, 0.9) !important;
     }
     
-    /* Fila superior de estadísticas: sin espacio lateral, con gap entre tarjetas */
+    /* Fila superior de estadísticas: pegadas a los bordes y espacio solo entre tarjetas */
     .dashboard-stats-row {
         margin-left: 0;
         margin-right: 0;
-        column-gap: 1.5rem;
     }
     .dashboard-stats-row > [class*="col-"] {
         padding-left: 0;
         padding-right: 0;
+        display: flex;
+    }
+    .dashboard-stats-row > [class*="col-"]:not(:last-child) {
+        padding-right: 0.75rem; /* espacio hacia la derecha (centro) */
+    }
+    .dashboard-stats-row > [class*="col-"]:not(:first-child) {
+        padding-left: 0.75rem;  /* espacio hacia la izquierda (centro) */
+    }
+    .dashboard-stats-row .stats-card {
+        width: 100%;
     }
     
-    /* Fila inferior (Actividad / Notificaciones): sin espacio lateral, con gap entre tarjetas */
+    /* Fila inferior (Actividad / Notificaciones): pegadas a los bordes y espacio solo en el centro */
     .dashboard-equal-row {
         margin-left: 0;
         margin-right: 0;
-        column-gap: 1.5rem;
     }
     .dashboard-equal-row > [class*="col-"] {
         padding-left: 0;
         padding-right: 0;
+    }
+    .dashboard-equal-row > [class*="col-"]:first-child {
+        padding-right: 0.75rem; /* espacio hacia el centro */
+    }
+    .dashboard-equal-row > [class*="col-"]:last-child {
+        padding-left: 0.75rem;  /* espacio hacia el centro */
     }
     
     .dashboard-equal-card {
