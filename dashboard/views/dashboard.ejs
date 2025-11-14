@@ -8,7 +8,7 @@ ${typeof error !== 'undefined' && error ? `
 </div>
 ` : ''}
 
-<div class="row mb-4">
+<div class="row mb-4 dashboard-stats-row">
     <div class="col-md-3">
         <div class="stats-card">
             <div class="stats-number">${guilds.length}</div>
@@ -193,6 +193,23 @@ ${typeof error !== 'undefined' && error ? `
         color: rgba(255, 255, 255, 0.9) !important;
     }
     
+    /* Fila superior de estadísticas: sin espacio lateral, con gap entre tarjetas */
+    .dashboard-stats-row {
+        margin-left: 0;
+        margin-right: 0;
+        column-gap: 1.5rem;
+    }
+    .dashboard-stats-row > [class*="col-"] {
+        padding-left: 0;
+        padding-right: 0;
+    }
+    
+    /* Fila inferior (Actividad / Notificaciones): sin espacio lateral, con gap entre tarjetas */
+    .dashboard-equal-row {
+        margin-left: 0;
+        margin-right: 0;
+        column-gap: 1.5rem;
+    }
     .dashboard-equal-row > [class*="col-"] {
         padding-left: 0;
         padding-right: 0;
