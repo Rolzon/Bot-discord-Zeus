@@ -102,9 +102,9 @@ ${typeof error !== 'undefined' && error ? `
     </div>
 </div>
 
-<div class="row mt-4">
-    <div class="col-md-6">
-        <div class="card">
+<div class="row mt-4 dashboard-equal-row">
+    <div class="col-md-6 d-flex">
+        <div class="card dashboard-equal-card flex-fill">
             <div class="card-header">
                 <h6 class="mb-0">
                     <i class="fas fa-chart-line me-2"></i>
@@ -119,8 +119,8 @@ ${typeof error !== 'undefined' && error ? `
         </div>
     </div>
     
-    <div class="col-md-6">
-        <div class="card">
+    <div class="col-md-6 d-flex">
+        <div class="card dashboard-equal-card flex-fill">
             <div class="card-header">
                 <h6 class="mb-0">
                     <i class="fas fa-bell me-2"></i>
@@ -191,6 +191,17 @@ ${typeof error !== 'undefined' && error ? `
     
     .stats-label {
         color: rgba(255, 255, 255, 0.9) !important;
+    }
+    
+    .dashboard-equal-row > [class*="col-"] {
+        padding-left: 0;
+        padding-right: 0;
+    }
+    
+    .dashboard-equal-card {
+        display: flex;
+        flex-direction: column;
+        height: 100%;
     }
 </style>
 `, script: `
