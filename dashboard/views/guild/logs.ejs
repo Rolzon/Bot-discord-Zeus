@@ -12,6 +12,20 @@
     </a>
 </div>
 
+<div class="row mb-3">
+    <div class="col-md-6">
+        <div class="input-group">
+            <span class="input-group-text"><i class="fas fa-search"></i></span>
+            <input type="text" id="logSearch" class="form-control" placeholder="Buscar en logs...">
+        </div>
+    </div>
+    <div class="col-md-6 text-end">
+        <button class="btn btn-sm btn-primary" onclick="loadLogs()">
+            <i class="fas fa-sync-alt me-1"></i>Actualizar
+        </button>
+    </div>
+</div>
+
 <div class="row">
     <div class="col-md-12">
         <div class="card">
@@ -22,21 +36,80 @@
                 </h5>
             </div>
             <div class="card-body">
-                <div class="alert alert-info">
-                    <i class="fas fa-info-circle me-2"></i>
-                    Panel de logs en desarrollo. Próximamente podrás ver todos los eventos del servidor.
+                <div class="table-responsive">
+                    <table class="table table-hover">
+                        <thead>
+                            <tr>
+                                <th>Tipo</th>
+                                <th>Usuario</th>
+                                <th>Fecha</th>
+                                <th>Detalles</th>
+                            </tr>
+                        </thead>
+                        <tbody id="logsTable">
+                            <tr>
+                                <td colspan="4" class="text-center">
+                                    <div class="spinner-border spinner-border-sm me-2" role="status"></div>
+                                    Cargando logs...
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
                 </div>
-                
-                <h6 class="mb-3">Funciones próximamente:</h6>
-                <ul>
-                    <li>Ver logs de moderación</li>
-                    <li>Registro de acciones del bot</li>
-                    <li>Historial de mensajes eliminados</li>
-                    <li>Logs de entrada/salida de miembros</li>
-                    <li>Filtros y búsqueda avanzada</li>
-                </ul>
             </div>
         </div>
     </div>
 </div>
-`, script: `` }) %>
+`, script: `
+<script>
+    const guildId = '${guild.id}';
+
+    async function loadLogs() {
+        const tbody = document.getElementById('logsTable');
+        try {
+            const res = await fetch('/api/guild/' + guildId + '/logs');
+            if (!res.ok) throw new Error('Error HTTP ' + res.status);
+            const logs = await res.json();
+
+            if (!logs || logs.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="4" class="text-center">No hay logs disponibles</td></tr>';
+                return;
+            }
+
+            tbody.innerHTML = logs.map(log => {
+                const date = new Date(log.timestamp).toLocaleString();
+                const type = log.type || 'evento';
+                const user = log.user || 'Desconocido';
+                const details = log.details || '';
+
+                return (
+                    '<tr>' +
+                        '<td><span class="badge bg-secondary text-uppercase">' + type + '</span></td>' +
+                        '<td>' + user + '</td>' +
+                        '<td>' + date + '</td>' +
+                        '<td>' + details + '</td>' +
+                    '</tr>'
+                );
+            }).join('');
+
+            // Filtro de búsqueda
+            const searchInput = document.getElementById('logSearch');
+            if (searchInput && !searchInput._listenerAttached) {
+                searchInput._listenerAttached = true;
+                searchInput.addEventListener('input', function () {
+                    const q = this.value.toLowerCase();
+                    Array.from(tbody.querySelectorAll('tr')).forEach(tr => {
+                        const text = tr.textContent.toLowerCase();
+                        tr.style.display = text.includes(q) ? '' : 'none';
+                    });
+                });
+            }
+        } catch (error) {
+            console.error('Error cargando logs:', error);
+            tbody.innerHTML = '<tr><td colspan="4" class="text-center text-danger">Error cargando logs</td></tr>';
+        }
+    }
+
+    document.addEventListener('DOMContentLoaded', loadLogs);
+</script>
+` }) %>

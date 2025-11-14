@@ -12,31 +12,143 @@
     </a>
 </div>
 
+<div class="row mb-4">
+    <div class="col-md-4">
+        <div class="card">
+            <div class="card-body text-center">
+                <img id="guildIcon" src="${guild.iconURL || ''}" class="rounded mb-3" width="80" onerror="this.style.display='none'">
+                <h5 id="guildName">${guild.name}</h5>
+                <p class="text-muted mb-0" id="guildOwner">Propietario: -</p>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="card">
+            <div class="card-body text-center">
+                <h6>Miembros</h6>
+                <h3 id="guildMembers">-</h3>
+                <p class="text-muted mb-0">Canales: <span id="guildChannels">-</span></p>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="card">
+            <div class="card-body text-center">
+                <h6>Boost Level</h6>
+                <h3 id="guildBoost">-</h3>
+                <p class="text-muted mb-0">Boosts: <span id="guildBoostCount">-</span></p>
+            </div>
+        </div>
+    </div>
+</div>
+
 <div class="row">
     <div class="col-md-12">
         <div class="card">
             <div class="card-header">
                 <h5 class="mb-0">
-                    <i class="fas fa-wrench me-2"></i>
-                    Configuración General
+                    <i class="fas fa-bullhorn me-2"></i>
+                    Enviar mensaje de prueba
                 </h5>
             </div>
             <div class="card-body">
-                <div class="alert alert-info">
-                    <i class="fas fa-info-circle me-2"></i>
-                    Panel de configuración en desarrollo. Próximamente podrás personalizar todos los ajustes del bot.
+                <div class="row g-2 align-items-end">
+                    <div class="col-md-4">
+                        <label class="form-label">Canal de texto</label>
+                        <select id="testChannel" class="form-select">
+                            <option value="">Cargando canales...</option>
+                        </select>
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label">Mensaje</label>
+                        <input type="text" id="testMessage" class="form-control" placeholder="Mensaje de prueba desde el dashboard">
+                    </div>
+                    <div class="col-md-2 text-end">
+                        <button class="btn btn-primary w-100" onclick="sendTestMessage()">
+                            <i class="fas fa-paper-plane me-1"></i>Enviar
+                        </button>
+                    </div>
                 </div>
-                
-                <h6 class="mb-3">Funciones próximamente:</h6>
-                <ul>
-                    <li>Configurar prefijos y comandos</li>
-                    <li>Ajustar permisos del bot</li>
-                    <li>Configurar canales de logs</li>
-                    <li>Personalizar mensajes de bienvenida</li>
-                    <li>Configuración de módulos (música, tickets, etc.)</li>
-                </ul>
             </div>
         </div>
     </div>
 </div>
-`, script: `` }) %>
+`, script: `
+<script>
+    const guildId = '${guild.id}';
+
+    async function loadGuildInfo() {
+        try {
+            const res = await fetch('/api/guild/' + guildId + '/info');
+            if (!res.ok) throw new Error('HTTP ' + res.status);
+            const info = await res.json();
+
+            document.getElementById('guildName').textContent = info.name;
+            document.getElementById('guildMembers').textContent = info.memberCount;
+            document.getElementById('guildChannels').textContent = info.channels.total;
+            document.getElementById('guildBoost').textContent = 'Nivel ' + info.boostLevel;
+            document.getElementById('guildBoostCount').textContent = info.boostCount;
+            if (info.owner) {
+                document.getElementById('guildOwner').textContent = 'Propietario: ' + info.owner.user.tag;
+            }
+        } catch (e) {
+            console.error('Error cargando info de servidor:', e);
+        }
+    }
+
+    async function loadChannels() {
+        try {
+            const res = await fetch('/api/guild/' + guildId + '/channels');
+            if (!res.ok) throw new Error('HTTP ' + res.status);
+            const channels = await res.json();
+
+            const select = document.getElementById('testChannel');
+            const textChannels = channels.filter(c => c.type === 0);
+            if (textChannels.length === 0) {
+                select.innerHTML = '<option value="">No hay canales de texto</option>';
+                return;
+            }
+
+            select.innerHTML = textChannels
+                .sort((a, b) => a.position - b.position)
+                .map(c => '<option value="' + c.id + '">#' + c.name + '</option>')
+                .join('');
+        } catch (e) {
+            console.error('Error cargando canales:', e);
+        }
+    }
+
+    async function sendTestMessage() {
+        const channelId = document.getElementById('testChannel').value;
+        const content = document.getElementById('testMessage').value || 'Mensaje de prueba desde el panel Zeus System';
+
+        if (!channelId) {
+            showNotification('Selecciona un canal de texto', 'warning');
+            return;
+        }
+
+        try {
+            const res = await fetch('/api/guild/' + guildId + '/channel/' + channelId + '/message', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ content })
+            });
+
+            const data = await res.json();
+            if (res.ok) {
+                showNotification('Mensaje enviado a #' + data.channel, 'success');
+            } else {
+                showNotification('Error: ' + (data.error || 'No se pudo enviar el mensaje'), 'danger');
+            }
+        } catch (e) {
+            console.error('Error enviando mensaje:', e);
+            showNotification('Error interno al enviar mensaje', 'danger');
+        }
+    }
+
+    document.addEventListener('DOMContentLoaded', () => {
+        loadGuildInfo();
+        loadChannels();
+    });
+</script>
+` }) %>

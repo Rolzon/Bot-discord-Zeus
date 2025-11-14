@@ -12,31 +12,126 @@
     </a>
 </div>
 
-<div class="row">
-    <div class="col-md-12">
+<div class="row mb-4">
+    <div class="col-md-4">
         <div class="card">
-            <div class="card-header">
-                <h5 class="mb-0">
-                    <i class="fas fa-sliders-h me-2"></i>
-                    Configuración de Canales Temporales
-                </h5>
+            <div class="card-body text-center">
+                <i class="fas fa-microphone-alt fa-2x text-primary mb-2"></i>
+                <h6>Canales TempVoice Activos</h6>
+                <h3 id="tempVoiceCount">-</h3>
             </div>
-            <div class="card-body">
-                <div class="alert alert-info">
-                    <i class="fas fa-info-circle me-2"></i>
-                    Panel de TempVoice en desarrollo. Próximamente podrás configurar canales de voz temporales desde aquí.
-                </div>
-                
-                <h6 class="mb-3">Funciones próximamente:</h6>
-                <ul>
-                    <li>Configurar canal generador</li>
-                    <li>Personalizar permisos predeterminados</li>
-                    <li>Ver canales temporales activos</li>
-                    <li>Gestionar canales manualmente</li>
-                    <li>Estadísticas de uso</li>
-                </ul>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="card">
+            <div class="card-body text-center">
+                <i class="fas fa-users fa-2x text-success mb-2"></i>
+                <h6>Usuarios en TempVoice</h6>
+                <h3 id="tempVoiceUsers">-</h3>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="card">
+            <div class="card-body text-center">
+                <i class="fas fa-sliders-h fa-2x text-warning mb-2"></i>
+                <h6>Canal Generador</h6>
+                <p id="tempVoiceGenerator" class="mb-0 text-muted">No configurado</p>
             </div>
         </div>
     </div>
 </div>
-`, script: `` }) %>
+
+<div class="row">
+    <div class="col-md-12">
+        <div class="card">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h5 class="mb-0">
+                    <i class="fas fa-list me-2"></i>
+                    Canales de Voz (vista rápida)
+                </h5>
+                <button class="btn btn-sm btn-primary" onclick="loadTempVoiceData()">
+                    <i class="fas fa-sync-alt"></i>
+                </button>
+            </div>
+            <div class="card-body">
+                <div class="table-responsive">
+                    <table class="table table-hover mb-0">
+                        <thead>
+                            <tr>
+                                <th>Nombre</th>
+                                <th>Usuarios</th>
+                                <th>Límite</th>
+                                <th>Tipo</th>
+                            </tr>
+                        </thead>
+                        <tbody id="tempVoiceTable">
+                            <tr>
+                                <td colspan="4" class="text-center">
+                                    <div class="spinner-border spinner-border-sm me-2" role="status"></div>
+                                    Cargando canales de voz...
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+`, script: `
+<script>
+    const guildId = '${guild.id}';
+
+    async function loadTempVoiceData() {
+        try {
+            const [statsRes, channelsRes] = await Promise.all([
+                fetch('/api/guild/' + guildId + '/bot-stats'),
+                fetch('/api/guild/' + guildId + '/channels')
+            ]);
+
+            const statsOk = statsRes.ok;
+            const channelsOk = channelsRes.ok;
+
+            let stats = null;
+            if (statsOk) {
+                stats = await statsRes.json();
+                document.getElementById('tempVoiceCount').textContent = stats.tempVoiceChannels ?? '-';
+            } else {
+                document.getElementById('tempVoiceCount').textContent = '-';
+            }
+
+            const tbody = document.getElementById('tempVoiceTable');
+            if (channelsOk) {
+                const channels = await channelsRes.json();
+                const voiceChannels = channels.filter(c => c.type === 2);
+
+                if (voiceChannels.length === 0) {
+                    tbody.innerHTML = '<tr><td colspan="4" class="text-center">No hay canales de voz</td></tr>';
+                } else {
+                    // No tenemos info de usuarios conectados desde aquí, así que mostramos "-"
+                    tbody.innerHTML = voiceChannels.map(c => (
+                        '<tr>' +
+                            '<td>' + c.name + '</td>' +
+                            '<td>-</td>' +
+                            '<td>' + (c.userLimit || '∞') + '</td>' +
+                            '<td>Voz</td>' +
+                        '</tr>'
+                    )).join('');
+                }
+            } else {
+                tbody.innerHTML = '<tr><td colspan="4" class="text-center text-danger">Error cargando canales de voz</td></tr>';
+            }
+
+            // No sabemos el canal generador real aquí, así que dejamos texto genérico
+            document.getElementById('tempVoiceUsers').textContent = '-';
+            // document.getElementById('tempVoiceGenerator').textContent = '#canal-generador'; // cuando lo tengas en BD
+        } catch (e) {
+            console.error('Error cargando datos de TempVoice:', e);
+            document.getElementById('tempVoiceTable').innerHTML = '<tr><td colspan="4" class="text-center text-danger">Error cargando datos de TempVoice</td></tr>';
+        }
+    }
+
+    document.addEventListener('DOMContentLoaded', loadTempVoiceData);
+</script>
+` }) %>
