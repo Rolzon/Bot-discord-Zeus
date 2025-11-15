@@ -1,6 +1,6 @@
 import { Events, EmbedBuilder } from 'discord.js';
 import OpenAI from 'openai';
-import { readFile } from 'fs/promises';
+import { readFile, writeFile } from 'fs/promises';
 import { join, dirname } from 'path';
 import { fileURLToPath } from 'url';
 import { updateUserXP, saveMessage } from '../database/helpers.js';
@@ -16,11 +16,13 @@ const openai = new OpenAI({
 const conversationHistory = new Map();
 const MAX_HISTORY = 10;
 
+// Ruta de base de conocimiento
+const kbPath = join(dirname(dirname(__dirname)), 'knowledge-base.json');
+
 // Cargar base de conocimiento
 let knowledgeBase = null;
 async function loadKnowledgeBase() {
   try {
-    const kbPath = join(dirname(dirname(__dirname)), 'knowledge-base.json');
     const data = await readFile(kbPath, 'utf-8');
     knowledgeBase = JSON.parse(data);
     console.log('✅ Base de conocimiento cargada');
@@ -81,20 +83,36 @@ async function handleGPTResponse(message) {
     if (!userMessage) {
       return message.reply('¿En qué puedo ayudarte? 😊');
     }
-    
+
+    // 1) Intentar responder directamente desde la base de conocimiento
+    if (knowledgeBase && Array.isArray(knowledgeBase.faqs)) {
+      const directFAQs = findRelevantFAQs(userMessage, knowledgeBase.faqs);
+
+      if (directFAQs.length > 0) {
+        const bestFaq = directFAQs[0];
+
+        const directEmbed = new EmbedBuilder()
+          .setColor('#5865F2')
+          .setDescription(bestFaq.answer)
+          .setTimestamp();
+
+        return message.reply({ embeds: [directEmbed] });
+      }
+    }
+
     // Mostrar que el bot está escribiendo
     await message.channel.sendTyping();
-    
+
     // Obtener o crear historial del canal
     if (!conversationHistory.has(message.channelId)) {
       conversationHistory.set(message.channelId, []);
     }
-    
+
     const history = conversationHistory.get(message.channelId);
-    
-    // Buscar información relevante en la base de conocimiento
+
+    // 2) Usar la base de conocimiento solo como contexto para GPT
     let contextInfo = '';
-    if (knowledgeBase) {
+    if (knowledgeBase && Array.isArray(knowledgeBase.faqs)) {
       const relevantFAQs = findRelevantFAQs(userMessage, knowledgeBase.faqs);
       if (relevantFAQs.length > 0) {
         contextInfo = '\n\nINFORMACIÓN DE LA BASE DE CONOCIMIENTO:\n';
@@ -132,6 +150,9 @@ async function handleGPTResponse(message) {
     });
     
     const response = completion.choices[0].message.content;
+
+    // Guardar la nueva pregunta/respuesta en la base de conocimiento para futuras consultas
+    saveFAQ(userMessage, response).catch(() => {});
     
     // Actualizar historial
     history.push(
@@ -292,4 +313,36 @@ function findRelevantFAQs(userMessage, faqs) {
   
   // Limitar a las 3 FAQs más relevantes
   return relevantFAQs.slice(0, 3);
+}
+
+// Guardar nuevas preguntas/respuestas en la base de conocimiento
+async function saveFAQ(question, answer) {
+  try {
+    // Asegurar estructura básica de la base de conocimiento
+    if (!knowledgeBase) {
+      knowledgeBase = { company: {}, faqs: [], custom_responses: [], instructions: '' };
+    }
+
+    if (!Array.isArray(knowledgeBase.faqs)) {
+      knowledgeBase.faqs = [];
+    }
+
+    const lowerQuestion = question.toLowerCase();
+
+    // Generar palabras clave simples desde la pregunta
+    const keywords = lowerQuestion
+      .split(/\s+/)
+      .filter(w => w.length > 3)
+      .slice(0, 5);
+
+    knowledgeBase.faqs.push({
+      keywords,
+      answer
+    });
+
+    await writeFile(kbPath, JSON.stringify(knowledgeBase, null, 2), 'utf-8');
+    console.log('✅ Nueva FAQ guardada en la base de conocimiento');
+  } catch (error) {
+    console.error('Error guardando nueva FAQ:', error);
+  }
 }
