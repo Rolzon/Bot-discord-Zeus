@@ -109,7 +109,7 @@ router.get('/:guildId/ticket/:ticketId', ensureGuildAdmin, async (req, res) => {
     const ticketId = req.params.ticketId;
     
     const ticketChannel = guild.channels.cache.get(ticketId);
-    if (!ticketChannel || !ticketChannel.name.startsWith('ticket-')) {
+    if (!ticketChannel || (!ticketChannel.name.startsWith('ticket-') && !ticketChannel.name.startsWith('closed-'))) {
       return res.status(404).render('error', { 
         error: 'Ticket no encontrado',
         user: req.user 
