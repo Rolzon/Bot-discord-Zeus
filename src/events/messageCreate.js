@@ -16,6 +16,11 @@ const openai = new OpenAI({
 const conversationHistory = new Map();
 const MAX_HISTORY = 10;
 
+// Preguntas pendientes cuando el bot se salta una respuesta por rol/"reply"
+// Map<messageId, { message, createdAt }>
+const pendingQuestions = new Map();
+const PENDING_TIMEOUT_MS = 5 * 60 * 1000; // 5 minutos
+
 // Rol que hace que el bot no responda con GPT si la persona está respondiendo a otro usuario
 const CHATGPT_IGNORE_ROLE_ID = process.env.CHATGPT_IGNORE_ROLE_ID || null;
 
@@ -79,7 +84,22 @@ async function handleGPTResponse(message) {
       if (hasIgnoreRole && message.reference) {
         const referenced = await message.fetchReference().catch(() => null);
         if (referenced && !referenced.author.bot) {
-          return; // no responder para no interferir en la conversación entre usuarios
+          // Guardar como pregunta pendiente y salir por ahora
+          pendingQuestions.set(message.id, {
+            message,
+            createdAt: Date.now()
+          });
+
+          setTimeout(async () => {
+            const pending = pendingQuestions.get(message.id);
+            if (!pending) return; // ya fue procesada o cancelada
+
+            // Vuelve a intentar responder con GPT usando el mensaje original
+            pendingQuestions.delete(message.id);
+            await handleGPTResponse(pending.message);
+          }, PENDING_TIMEOUT_MS);
+
+          return; // no responder inmediatamente
         }
       }
     }
