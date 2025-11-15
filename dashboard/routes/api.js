@@ -315,6 +315,57 @@ router.get('/guild/:guildId/bot-stats', ensureGuildAdmin, async (req, res) => {
   }
 });
 
+// ==============================
+//  Configuración de ChatGPT por servidor
+// ==============================
+
+// Nota: por ahora esta configuración se mantiene solo en memoria a nivel de proceso.
+// En producción real se debería usar una base de datos compartida con el bot.
+const guildGPTConfig = new Map(); // guildId => { ignoreRoleId, pendingTimeoutMinutes }
+
+const defaultGPTConfig = {
+  ignoreRoleId: process.env.CHATGPT_IGNORE_ROLE_ID || null,
+  pendingTimeoutMinutes: parseInt(process.env.CHATGPT_PENDING_TIMEOUT_MINUTES) || 5
+};
+
+// Obtener configuración de ChatGPT para un servidor
+router.get('/guild/:guildId/gpt-config', ensureGuildAdmin, async (req, res) => {
+  try {
+    const guildId = req.params.guildId;
+    const config = guildGPTConfig.get(guildId) || defaultGPTConfig;
+    res.json({
+      ignoreRoleId: config.ignoreRoleId || null,
+      pendingTimeoutMinutes: config.pendingTimeoutMinutes || defaultGPTConfig.pendingTimeoutMinutes
+    });
+  } catch (error) {
+    console.error('Error obteniendo configuración de GPT:', error);
+    res.status(500).json({ error: 'Error obteniendo configuración de GPT' });
+  }
+});
+
+// Guardar configuración de ChatGPT para un servidor
+router.post('/guild/:guildId/gpt-config', ensureGuildAdmin, async (req, res) => {
+  try {
+    const guildId = req.params.guildId;
+    const { ignoreRoleId, pendingTimeoutMinutes } = req.body;
+
+    const timeout = parseInt(pendingTimeoutMinutes);
+
+    guildGPTConfig.set(guildId, {
+      ignoreRoleId: ignoreRoleId || null,
+      pendingTimeoutMinutes: Number.isNaN(timeout) ? defaultGPTConfig.pendingTimeoutMinutes : Math.max(1, timeout)
+    });
+
+    res.json({
+      success: true,
+      config: guildGPTConfig.get(guildId)
+    });
+  } catch (error) {
+    console.error('Error guardando configuración de GPT:', error);
+    res.status(500).json({ error: 'Error guardando configuración de GPT' });
+  }
+});
+
 // Leaderboard básico de niveles (datos simulados por ahora)
 router.get('/guild/:guildId/levels/leaderboard', ensureGuildAdmin, async (req, res) => {
   try {
