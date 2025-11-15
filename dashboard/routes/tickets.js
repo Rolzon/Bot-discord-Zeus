@@ -137,26 +137,49 @@ router.get('/:guildId/ticket/:ticketId', ensureGuildAdmin, async (req, res) => {
         embeds: msg.embeds.length > 0
       }));
 
-    // Información del ticket
+    // Información del ticket adaptada a lo que espera la vista
+    const creatorMessage = messageHistory.find(m => !m.author.bot) || messageHistory[0];
     const ticketInfo = {
       id: ticketChannel.id,
       name: ticketChannel.name,
       topic: ticketChannel.topic,
       createdAt: ticketChannel.createdAt,
       category: ticketChannel.parent?.name || 'Sin categoría',
-      members: Array.from(ticketChannel.members.values()).map(member => ({
+      status: ticketChannel.name.startsWith('closed-') ? 'closed' : 'open',
+      creator: creatorMessage
+        ? {
+            username: creatorMessage.author.tag,
+            avatar: creatorMessage.author.avatar
+          }
+        : {
+            username: 'Desconocido',
+            avatar: guild.iconURL()
+          },
+      messages: messageHistory.map(m => ({
+        id: m.id,
+        content: m.content,
+        author: {
+          username: m.author.tag,
+          avatar: m.author.avatar,
+          isStaff: m.author.bot
+        },
+        timestamp: m.timestamp,
+        attachments: m.attachments
+      })),
+      participants: Array.from(ticketChannel.members.values()).map(member => ({
         id: member.id,
-        tag: member.user.tag,
+        username: member.user.tag,
         avatar: member.user.displayAvatarURL(),
         joinedAt: member.joinedAt
-      }))
+      })),
+      claimedBy: null,
+      closedAt: null
     };
 
     res.render('tickets/view', {
       user: req.user,
       guild: guild,
-      ticket: ticketInfo,
-      messages: messageHistory
+      ticket: ticketInfo
     });
   } catch (error) {
     console.error('Error viendo ticket:', error);
