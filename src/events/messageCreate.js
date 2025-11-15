@@ -16,6 +16,9 @@ const openai = new OpenAI({
 const conversationHistory = new Map();
 const MAX_HISTORY = 10;
 
+// Rol que hace que el bot no responda con GPT si la persona está respondiendo a otro usuario
+const CHATGPT_IGNORE_ROLE_ID = process.env.CHATGPT_IGNORE_ROLE_ID || null;
+
 // Cargar base de conocimiento
 let knowledgeBase = null;
 async function loadKnowledgeBase() {
@@ -68,6 +71,19 @@ export default {
 
 async function handleGPTResponse(message) {
   try {
+    // Si hay un rol configurado para no interferir en conversaciones,
+    // y el usuario lo tiene y está respondiendo a otro usuario NO bot,
+    // el bot no responde con GPT.
+    if (CHATGPT_IGNORE_ROLE_ID && message.guild && message.member) {
+      const hasIgnoreRole = message.member.roles.cache.has(CHATGPT_IGNORE_ROLE_ID);
+      if (hasIgnoreRole && message.reference) {
+        const referenced = await message.fetchReference().catch(() => null);
+        if (referenced && !referenced.author.bot) {
+          return; // no responder para no interferir en la conversación entre usuarios
+        }
+      }
+    }
+
     // Obtener el mensaje (quitar menciones si las hay)
     const userMessage = message.content
       .replace(/<@!?\d+>/g, '')
