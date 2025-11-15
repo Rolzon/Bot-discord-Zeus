@@ -58,8 +58,13 @@ export default {
     // Sistema de XP/Leveling
     await handleLeveling(message);
     
-    // Responder a todos los mensajes (excepto de bots)
-    await handleGPTResponse(message);
+    // Responder con ChatGPT solo si el canal no está pausado
+    const pausedChannels = message.client.data?.gptPausedChannels;
+    const isGPTPausedInChannel = pausedChannels && pausedChannels.has(message.channelId);
+
+    if (!isGPTPausedInChannel) {
+      await handleGPTResponse(message);
+    }
     
     // Sistema de auto-moderación básico
     await autoModeration(message);

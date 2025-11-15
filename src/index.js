@@ -66,6 +66,7 @@ client.data = {
   tickets: new Map(),
   giveaways: new Map(),
   levels: new Map(),
+  gptPausedChannels: new Set(),
   
   async load() {
     try {
@@ -76,6 +77,7 @@ client.data = {
       this.tickets = new Map(data.tickets || []);
       this.giveaways = new Map(data.giveaways || []);
       this.levels = new Map(data.levels || []);
+      this.gptPausedChannels = new Set(data.gptPausedChannels || []);
     } catch (error) {
       console.log('No se encontraron datos previos, iniciando con datos limpios');
     }
@@ -89,7 +91,8 @@ client.data = {
         mutes: Array.from(this.mutes.entries()),
         tickets: Array.from(this.tickets.entries()),
         giveaways: Array.from(this.giveaways.entries()),
-        levels: Array.from(this.levels.entries())
+        levels: Array.from(this.levels.entries()),
+        gptPausedChannels: Array.from(this.gptPausedChannels)
       };
       await writeFile(dataPath, JSON.stringify(data, null, 2));
     } catch (error) {

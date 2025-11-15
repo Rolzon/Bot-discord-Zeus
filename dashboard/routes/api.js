@@ -1,7 +1,13 @@
 import express from 'express';
 import { dashboardClient, io } from '../server.js';
+import { readFile, writeFile } from 'fs/promises';
+import { fileURLToPath } from 'url';
+import { dirname, join } from 'path';
 
 const router = express.Router();
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
 
 // Middleware para verificar permisos de administrador
 async function ensureGuildAdmin(req, res, next) {
@@ -54,6 +60,33 @@ router.get('/guild/:guildId/info', ensureGuildAdmin, async (req, res) => {
     res.status(500).json({ error: 'Error obteniendo información del servidor' });
   }
 });
+
+// Utilidades para botdata compartido (estado de ChatGPT pausado por canal)
+async function loadBotData() {
+  try {
+    const dataPath = join(dirname(dirname(__dirname)), 'data', 'botdata.json');
+    const raw = await readFile(dataPath, 'utf-8');
+    return JSON.parse(raw);
+  } catch (error) {
+    return {
+      warnings: [],
+      mutes: [],
+      tickets: [],
+      giveaways: [],
+      levels: [],
+      gptPausedChannels: []
+    };
+  }
+}
+
+async function saveBotData(data) {
+  try {
+    const dataPath = join(dirname(dirname(__dirname)), 'data', 'botdata.json');
+    await writeFile(dataPath, JSON.stringify(data, null, 2));
+  } catch (error) {
+    console.error('Error guardando botdata desde dashboard:', error);
+  }
+}
 
 // Obtener miembros del servidor
 router.get('/guild/:guildId/members', ensureGuildAdmin, async (req, res) => {

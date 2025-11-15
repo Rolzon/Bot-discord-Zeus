@@ -60,9 +60,32 @@
             </div>
         </div>
     </div>
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h5 class="mb-0">
+                    <i class="fas fa-robot me-2"></i>
+                    ChatGPT por canal
+                </h5>
+                <small class="text-muted">Controla en qué canales responde la IA</small>
+            </div>
+            <div class="card-body">
+                <p class="text-muted small mb-3">
+                    Desde aquí puedes pausar o activar las respuestas automáticas de ChatGPT por canal.
+                    Es equivalente a usar el comando <code>/gpt-toggle</code> dentro de cada canal.
+                </p>
+                <div id="gptChannelsContainer">
+                    <div class="text-center text-muted py-3">
+                        <div class="spinner-border spinner-border-sm me-2" role="status"></div>
+                        Cargando canales...
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
 </div>
 
-<div class="row">
+<div class="row mt-4">
     <div class="col-md-12">
         <div class="card">
             <div class="card-header">
@@ -138,6 +161,78 @@
         }
     }
 
+    async function loadGPTChannels() {
+        const container = document.getElementById('gptChannelsContainer');
+        if (!container) return;
+
+        try {
+            const res = await fetch('/api/guild/' + guildId + '/gpt-channels');
+            if (!res.ok) throw new Error('HTTP ' + res.status);
+            const channels = await res.json();
+
+            if (!channels || channels.length === 0) {
+                container.innerHTML = '<p class="text-muted mb-0">No se encontraron canales de texto en este servidor.</p>';
+                return;
+            }
+
+            const rows = channels.map(c => `
+                <div class="d-flex justify-content-between align-items-center mb-2">
+                    <div>
+                        <strong>#${c.name}</strong>
+                    </div>
+                    <div class="form-check form-switch mb-0">
+                        <input class="form-check-input" type="checkbox" id="gpt-channel-${c.id}" ${c.paused ? '' : 'checked'} onclick="toggleGPTChannel('${c.id}', this.checked)">
+                        <label class="form-check-label small" for="gpt-channel-${c.id}">
+                            ${c.paused ? 'Pausado' : 'Activo'}
+                        </label>
+                    </div>
+                </div>
+            `).join('');
+
+            container.innerHTML = rows;
+        } catch (e) {
+            console.error('Error cargando canales GPT:', e);
+            container.innerHTML = '<p class="text-danger mb-0">Error cargando canales para ChatGPT.</p>';
+        }
+    }
+
+    async function toggleGPTChannel(channelId, active) {
+        try {
+            const res = await fetch('/api/guild/' + guildId + '/gpt-channels/' + channelId, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ paused: !active })
+            });
+
+            const data = await res.json();
+
+            if (!res.ok || !data.success) {
+                showNotification('Error al actualizar ChatGPT en el canal seleccionado', 'danger');
+                // Revertir visualmente el cambio si falla
+                const checkbox = document.getElementById('gpt-channel-' + channelId);
+                if (checkbox) {
+                    checkbox.checked = !active;
+                }
+                return;
+            }
+
+            const checkbox = document.getElementById('gpt-channel-' + channelId);
+            const label = checkbox ? checkbox.nextElementSibling : null;
+            if (label) {
+                label.textContent = data.paused ? 'Pausado' : 'Activo';
+            }
+
+            if (data.paused) {
+                showNotification('ChatGPT ha sido pausado en el canal seleccionado.', 'warning');
+            } else {
+                showNotification('ChatGPT ha sido activado en el canal seleccionado.', 'success');
+            }
+        } catch (e) {
+            console.error('Error actualizando canal GPT:', e);
+            showNotification('Error interno al actualizar ChatGPT en el canal.', 'danger');
+        }
+    }
+
     async function sendTestMessage() {
         const channelId = document.getElementById('testChannel').value;
         const content = document.getElementById('testMessage').value || 'Mensaje de prueba desde el panel Zeus System';
@@ -169,6 +264,7 @@
     document.addEventListener('DOMContentLoaded', () => {
         loadGuildInfo();
         loadChannels();
+        loadGPTChannels();
     });
 </script>
 ` }) %>
