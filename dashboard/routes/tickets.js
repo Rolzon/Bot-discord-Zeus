@@ -137,9 +137,14 @@ router.get('/:guildId/ticket/:ticketId', ensureGuildAdmin, async (req, res) => {
         embeds: msg.embeds.length > 0
       }));
 
-    // Obtener información adicional de la base de datos
-    const Ticket = (await import('../../src/database/models/Ticket.js')).default;
-    const ticketData = await Ticket.findOne({ channelId: ticketId });
+    // Obtener información adicional de la base de datos (opcional)
+    let ticketData = null;
+    try {
+      const Ticket = (await import('../../src/database/models/Ticket.js')).default;
+      ticketData = await Ticket.findOne({ channelId: ticketId });
+    } catch (dbError) {
+      console.log('No se pudo obtener datos de la base de datos:', dbError.message);
+    }
 
     // Información del ticket adaptada a lo que espera la vista
     const creatorMessage = messageHistory.find(m => !m.author.bot) || messageHistory[0];
@@ -399,19 +404,21 @@ router.post('/:guildId/ticket/:ticketId/claim', ensureGuildAdmin, async (req, re
       return res.status(404).json({ error: 'Ticket no encontrado' });
     }
 
-    // Importar modelo de Ticket
-    const Ticket = (await import('../../src/database/models/Ticket.js')).default;
-    
-    // Actualizar en base de datos
-    const ticket = await Ticket.findOne({ channelId: ticketId });
-    if (ticket) {
-      ticket.claimedBy = {
-        userId: req.user.id,
-        username: req.user.username,
-        avatar: `https://cdn.discordapp.com/avatars/${req.user.id}/${req.user.avatar}.png`,
-        claimedAt: new Date()
-      };
-      await ticket.save();
+    // Importar modelo de Ticket y actualizar en base de datos (opcional)
+    try {
+      const Ticket = (await import('../../src/database/models/Ticket.js')).default;
+      const ticket = await Ticket.findOne({ channelId: ticketId });
+      if (ticket) {
+        ticket.claimedBy = {
+          userId: req.user.id,
+          username: req.user.username,
+          avatar: `https://cdn.discordapp.com/avatars/${req.user.id}/${req.user.avatar}.png`,
+          claimedAt: new Date()
+        };
+        await ticket.save();
+      }
+    } catch (dbError) {
+      console.log('No se pudo actualizar en base de datos:', dbError.message);
     }
 
     // Enviar mensaje en el canal
@@ -461,19 +468,21 @@ router.post('/:guildId/ticket/:ticketId/note', ensureGuildAdmin, async (req, res
       return res.status(404).json({ error: 'Ticket no encontrado' });
     }
 
-    // Importar modelo de Ticket
-    const Ticket = (await import('../../src/database/models/Ticket.js')).default;
-    
-    // Guardar nota en base de datos
-    const ticket = await Ticket.findOne({ channelId: ticketId });
-    if (ticket) {
-      ticket.notes.push({
-        userId: req.user.id,
-        username: req.user.username,
-        content: content,
-        timestamp: new Date()
-      });
-      await ticket.save();
+    // Importar modelo de Ticket y guardar nota en base de datos (opcional)
+    try {
+      const Ticket = (await import('../../src/database/models/Ticket.js')).default;
+      const ticket = await Ticket.findOne({ channelId: ticketId });
+      if (ticket) {
+        ticket.notes.push({
+          userId: req.user.id,
+          username: req.user.username,
+          content: content,
+          timestamp: new Date()
+        });
+        await ticket.save();
+      }
+    } catch (dbError) {
+      console.log('No se pudo guardar nota en base de datos:', dbError.message);
     }
 
     // Enviar mensaje en el canal (solo visible para staff)
@@ -536,32 +545,34 @@ router.post('/:guildId/ticket/:ticketId/transfer', ensureGuildAdmin, async (req,
       return res.status(404).json({ error: 'Usuario destino no encontrado' });
     }
 
-    // Importar modelo de Ticket
-    const Ticket = (await import('../../src/database/models/Ticket.js')).default;
-    
-    // Actualizar en base de datos
-    const ticket = await Ticket.findOne({ channelId: ticketId });
-    if (ticket) {
-      ticket.transfers.push({
-        fromUserId: req.user.id,
-        fromUsername: req.user.username,
-        toUserId: targetUserId,
-        toUsername: targetMember.user.username,
-        reason: reason || 'Sin razón especificada',
-        timestamp: new Date()
-      });
-      
-      // Actualizar reclamación si existe
-      if (ticket.claimedBy) {
-        ticket.claimedBy = {
-          userId: targetUserId,
-          username: targetMember.user.username,
-          avatar: targetMember.user.displayAvatarURL(),
-          claimedAt: new Date()
-        };
+    // Importar modelo de Ticket y actualizar en base de datos (opcional)
+    try {
+      const Ticket = (await import('../../src/database/models/Ticket.js')).default;
+      const ticket = await Ticket.findOne({ channelId: ticketId });
+      if (ticket) {
+        ticket.transfers.push({
+          fromUserId: req.user.id,
+          fromUsername: req.user.username,
+          toUserId: targetUserId,
+          toUsername: targetMember.user.username,
+          reason: reason || 'Sin razón especificada',
+          timestamp: new Date()
+        });
+        
+        // Actualizar reclamación si existe
+        if (ticket.claimedBy) {
+          ticket.claimedBy = {
+            userId: targetUserId,
+            username: targetMember.user.username,
+            avatar: targetMember.user.displayAvatarURL(),
+            claimedAt: new Date()
+          };
+        }
+        
+        await ticket.save();
       }
-      
-      await ticket.save();
+    } catch (dbError) {
+      console.log('No se pudo actualizar transferencia en base de datos:', dbError.message);
     }
 
     // Dar permisos al nuevo usuario
@@ -612,11 +623,26 @@ router.get('/:guildId/ticket/:ticketId/user-info', ensureGuildAdmin, async (req,
     }
 
     // Importar modelo de Ticket
-    const Ticket = (await import('../../src/database/models/Ticket.js')).default;
-    const ticket = await Ticket.findOne({ channelId: ticketId });
+    let ticket = null;
+    let userTickets = [];
+    
+    try {
+      const Ticket = (await import('../../src/database/models/Ticket.js')).default;
+      ticket = await Ticket.findOne({ channelId: ticketId });
+      
+      if (ticket) {
+        // Obtener tickets previos del usuario
+        userTickets = await Ticket.find({ 
+          guildId: guild.id, 
+          userId: ticket.userId 
+        }).sort({ createdAt: -1 });
+      }
+    } catch (dbError) {
+      console.log('No se pudo obtener datos de la base de datos:', dbError.message);
+    }
     
     if (!ticket) {
-      return res.status(404).json({ error: 'Información del ticket no encontrada' });
+      return res.status(404).json({ error: 'Información del ticket no encontrada en la base de datos' });
     }
 
     // Obtener información del usuario
@@ -632,12 +658,6 @@ router.get('/:guildId/ticket/:ticketId/user-info', ensureGuildAdmin, async (req,
         status: 'Usuario no encontrado en el servidor'
       });
     }
-
-    // Obtener tickets previos del usuario
-    const userTickets = await Ticket.find({ 
-      guildId: guild.id, 
-      userId: ticket.userId 
-    }).sort({ createdAt: -1 });
 
     const userInfo = {
       userId: member.id,
