@@ -19,6 +19,9 @@ const MAX_HISTORY = 10;
 // Ruta de base de conocimiento
 const kbPath = join(dirname(dirname(__dirname)), 'knowledge-base.json');
 
+// Estadísticas de uso de IA (por servidor)
+export const aiStats = new Map(); // guildId => { kbResponses, gptResponses }
+
 // Cargar base de conocimiento
 let knowledgeBase = null;
 async function loadKnowledgeBase() {
@@ -91,9 +94,17 @@ async function handleGPTResponse(message) {
       if (directFAQs.length > 0) {
         const bestFaq = directFAQs[0];
 
+        // Incrementar contador de respuestas desde KB
+        const guildId = message.guildId;
+        if (!aiStats.has(guildId)) {
+          aiStats.set(guildId, { kbResponses: 0, gptResponses: 0 });
+        }
+        aiStats.get(guildId).kbResponses++;
+
         const directEmbed = new EmbedBuilder()
           .setColor('#5865F2')
           .setDescription(bestFaq.answer)
+          .setFooter({ text: '💡 Respuesta desde la base de conocimiento' })
           .setTimestamp();
 
         return message.reply({ embeds: [directEmbed] });
@@ -150,6 +161,13 @@ async function handleGPTResponse(message) {
     });
     
     const response = completion.choices[0].message.content;
+
+    // Incrementar contador de respuestas desde GPT
+    const guildId = message.guildId;
+    if (!aiStats.has(guildId)) {
+      aiStats.set(guildId, { kbResponses: 0, gptResponses: 0 });
+    }
+    aiStats.get(guildId).gptResponses++;
 
     // Guardar la nueva pregunta/respuesta en la base de conocimiento para futuras consultas
     saveFAQ(userMessage, response).catch(() => {});

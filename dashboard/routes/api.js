@@ -1,7 +1,16 @@
 import express from 'express';
 import { dashboardClient, io } from '../server.js';
+import { readFile, writeFile } from 'fs/promises';
+import { join, dirname } from 'path';
+import { fileURLToPath } from 'url';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
 
 const router = express.Router();
+
+// Ruta a la base de conocimiento
+const kbPath = join(dirname(dirname(__dirname)), 'knowledge-base.json');
 
 // Middleware para verificar permisos de administrador
 async function ensureGuildAdmin(req, res, next) {
@@ -526,6 +535,159 @@ router.post('/guild/:guildId/giveaways/:id/end', ensureGuildAdmin, async (req, r
   } catch (error) {
     console.error('Error finalizando sorteo:', error);
     res.status(500).json({ error: 'Error finalizando sorteo' });
+  }
+});
+
+// =====================
+//  Gestión de Base de Conocimiento IA
+// =====================
+
+// Obtener todas las FAQs de la base de conocimiento
+router.get('/guild/:guildId/knowledge/faqs', ensureGuildAdmin, async (req, res) => {
+  try {
+    const data = await readFile(kbPath, 'utf-8');
+    const knowledgeBase = JSON.parse(data);
+
+    res.json({
+      faqs: knowledgeBase.faqs || [],
+      company: knowledgeBase.company || {},
+      instructions: knowledgeBase.instructions || ''
+    });
+  } catch (error) {
+    console.error('Error leyendo base de conocimiento:', error);
+    res.status(500).json({ error: 'Error leyendo base de conocimiento' });
+  }
+});
+
+// Obtener estadísticas de uso de IA (KB vs GPT)
+router.get('/guild/:guildId/knowledge/stats', ensureGuildAdmin, async (req, res) => {
+  try {
+    const guildId = req.params.guildId;
+
+    // Importar dinámicamente las estadísticas desde messageCreate.js
+    const { aiStats } = await import('../../src/events/messageCreate.js');
+
+    const stats = aiStats.get(guildId) || { kbResponses: 0, gptResponses: 0 };
+    const total = stats.kbResponses + stats.gptResponses;
+    const kbPercentage = total > 0 ? Math.round((stats.kbResponses / total) * 100) : 0;
+
+    // Leer cantidad de FAQs
+    const data = await readFile(kbPath, 'utf-8');
+    const knowledgeBase = JSON.parse(data);
+    const faqCount = knowledgeBase.faqs?.length || 0;
+
+    res.json({
+      kbResponses: stats.kbResponses,
+      gptResponses: stats.gptResponses,
+      totalResponses: total,
+      kbPercentage: kbPercentage,
+      faqCount: faqCount
+    });
+  } catch (error) {
+    console.error('Error obteniendo estadísticas de IA:', error);
+    res.status(500).json({ error: 'Error obteniendo estadísticas' });
+  }
+});
+
+// Agregar nueva FAQ
+router.post('/guild/:guildId/knowledge/faqs', ensureGuildAdmin, async (req, res) => {
+  try {
+    const { keywords, answer } = req.body;
+
+    if (!keywords || !Array.isArray(keywords) || keywords.length === 0) {
+      return res.status(400).json({ error: 'Las palabras clave son obligatorias' });
+    }
+
+    if (!answer || answer.trim() === '') {
+      return res.status(400).json({ error: 'La respuesta es obligatoria' });
+    }
+
+    const data = await readFile(kbPath, 'utf-8');
+    const knowledgeBase = JSON.parse(data);
+
+    if (!Array.isArray(knowledgeBase.faqs)) {
+      knowledgeBase.faqs = [];
+    }
+
+    const newFaq = {
+      keywords: keywords.map(k => k.toLowerCase().trim()),
+      answer: answer.trim()
+    };
+
+    knowledgeBase.faqs.push(newFaq);
+
+    await writeFile(kbPath, JSON.stringify(knowledgeBase, null, 2), 'utf-8');
+
+    res.json({ success: true, faq: newFaq });
+  } catch (error) {
+    console.error('Error agregando FAQ:', error);
+    res.status(500).json({ error: 'Error agregando FAQ' });
+  }
+});
+
+// Editar FAQ existente
+router.put('/guild/:guildId/knowledge/faqs/:index', ensureGuildAdmin, async (req, res) => {
+  try {
+    const index = parseInt(req.params.index);
+    const { keywords, answer } = req.body;
+
+    if (isNaN(index) || index < 0) {
+      return res.status(400).json({ error: 'Índice inválido' });
+    }
+
+    if (!keywords || !Array.isArray(keywords) || keywords.length === 0) {
+      return res.status(400).json({ error: 'Las palabras clave son obligatorias' });
+    }
+
+    if (!answer || answer.trim() === '') {
+      return res.status(400).json({ error: 'La respuesta es obligatoria' });
+    }
+
+    const data = await readFile(kbPath, 'utf-8');
+    const knowledgeBase = JSON.parse(data);
+
+    if (!Array.isArray(knowledgeBase.faqs) || index >= knowledgeBase.faqs.length) {
+      return res.status(404).json({ error: 'FAQ no encontrada' });
+    }
+
+    knowledgeBase.faqs[index] = {
+      keywords: keywords.map(k => k.toLowerCase().trim()),
+      answer: answer.trim()
+    };
+
+    await writeFile(kbPath, JSON.stringify(knowledgeBase, null, 2), 'utf-8');
+
+    res.json({ success: true, faq: knowledgeBase.faqs[index] });
+  } catch (error) {
+    console.error('Error editando FAQ:', error);
+    res.status(500).json({ error: 'Error editando FAQ' });
+  }
+});
+
+// Eliminar FAQ
+router.delete('/guild/:guildId/knowledge/faqs/:index', ensureGuildAdmin, async (req, res) => {
+  try {
+    const index = parseInt(req.params.index);
+
+    if (isNaN(index) || index < 0) {
+      return res.status(400).json({ error: 'Índice inválido' });
+    }
+
+    const data = await readFile(kbPath, 'utf-8');
+    const knowledgeBase = JSON.parse(data);
+
+    if (!Array.isArray(knowledgeBase.faqs) || index >= knowledgeBase.faqs.length) {
+      return res.status(404).json({ error: 'FAQ no encontrada' });
+    }
+
+    const deletedFaq = knowledgeBase.faqs.splice(index, 1)[0];
+
+    await writeFile(kbPath, JSON.stringify(knowledgeBase, null, 2), 'utf-8');
+
+    res.json({ success: true, deletedFaq });
+  } catch (error) {
+    console.error('Error eliminando FAQ:', error);
+    res.status(500).json({ error: 'Error eliminando FAQ' });
   }
 });
 

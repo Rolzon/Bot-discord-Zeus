@@ -13,54 +13,92 @@
 </div>
 
 <div class="row mb-4">
-    <div class="col-md-4">
+    <div class="col-md-3">
         <div class="card">
             <div class="card-body text-center">
-                <i class="fas fa-question-circle fa-2x text-primary mb-2"></i>
-                <h6>FAQs Cargadas</h6>
-                <h3 id="kbFaqs">-</h3>
+                <i class="fas fa-database fa-2x text-primary mb-2"></i>
+                <h6>FAQs en Base</h6>
+                <h3 id="kbFaqCount">-</h3>
             </div>
         </div>
     </div>
-    <div class="col-md-4">
+    <div class="col-md-3">
         <div class="card">
             <div class="card-body text-center">
-                <i class="fas fa-comments fa-2x text-success mb-2"></i>
-                <h6>Conversaciones IA</h6>
-                <h3 id="kbConversations">-</h3>
+                <i class="fas fa-check-circle fa-2x text-success mb-2"></i>
+                <h6>Respuestas desde KB</h6>
+                <h3 id="kbResponses">-</h3>
             </div>
         </div>
     </div>
-    <div class="col-md-4">
+    <div class="col-md-3">
+        <div class="card">
+            <div class="card-body text-center">
+                <i class="fas fa-robot fa-2x text-info mb-2"></i>
+                <h6>Respuestas desde GPT</h6>
+                <h3 id="gptResponses">-</h3>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
         <div class="card">
             <div class="card-body text-center">
                 <i class="fas fa-percentage fa-2x text-warning mb-2"></i>
-                <h6>Tasa de uso estimada</h6>
-                <h3 id="kbUsage">-</h3>
+                <h6>Ahorro de API</h6>
+                <h3 id="kbPercentage">-</h3>
             </div>
         </div>
     </div>
 </div>
 
-<div class="row">
+<div class="row mb-4">
     <div class="col-md-12">
         <div class="card">
-            <div class="card-header">
+            <div class="card-header d-flex justify-content-between align-items-center">
                 <h5 class="mb-0">
-                    <i class="fas fa-lightbulb me-2"></i>
-                    Información
+                    <i class="fas fa-list me-2"></i>
+                    Preguntas Frecuentes (FAQs)
                 </h5>
+                <button class="btn btn-primary btn-sm" onclick="showAddFaqModal()">
+                    <i class="fas fa-plus me-2"></i>Agregar FAQ
+                </button>
             </div>
             <div class="card-body">
-                <p class="text-muted">
-                    Este panel está preparado para integrarse con la base de conocimiento del bot (comandos <code>/kb-add</code>, <code>/kb-list</code>, etc.).
-                    Por ahora se muestran estadísticas simuladas basadas en la actividad del bot.
-                </p>
-                <ul class="mb-0">
-                    <li>Cuando añadas preguntas/respuestas con <code>/kb-add</code>, aquí podrás ver un resumen.</li>
-                    <li>Las estadísticas de uso de IA se calcularán en función de los mensajes procesados.</li>
-                    <li>Este panel no modifica nada del bot todavía, solo muestra información.</li>
-                </ul>
+                <div id="faqsList">
+                    <div class="text-center py-4">
+                        <div class="spinner-border text-primary" role="status">
+                            <span class="visually-hidden">Cargando...</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal para agregar/editar FAQ -->
+<div class="modal fade" id="faqModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="faqModalTitle">Agregar FAQ</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div class="mb-3">
+                    <label class="form-label">Palabras Clave (separadas por comas)</label>
+                    <input type="text" class="form-control" id="faqKeywords" placeholder="precio, costo, cuanto cuesta">
+                    <small class="text-muted">Estas palabras activarán esta respuesta cuando aparezcan en mensajes</small>
+                </div>
+                <div class="mb-3">
+                    <label class="form-label">Respuesta</label>
+                    <textarea class="form-control" id="faqAnswer" rows="5" placeholder="Escribe la respuesta que el bot dará..."></textarea>
+                </div>
+                <div id="faqError" class="alert alert-danger d-none"></div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                <button type="button" class="btn btn-primary" onclick="saveFaq()">Guardar</button>
             </div>
         </div>
     </div>
@@ -68,30 +106,195 @@
 `, script: `
 <script>
     const guildId = '${guild.id}';
+    let currentEditIndex = null;
+    let faqModal = null;
+
+    document.addEventListener('DOMContentLoaded', () => {
+        faqModal = new bootstrap.Modal(document.getElementById('faqModal'));
+        loadKnowledgeStats();
+        loadFaqs();
+    });
 
     async function loadKnowledgeStats() {
         try {
-            const res = await fetch('/api/guild/' + guildId + '/bot-stats');
+            const res = await fetch('/api/guild/' + guildId + '/knowledge/stats');
             if (!res.ok) throw new Error('HTTP ' + res.status);
             const stats = await res.json();
 
-            // Como no tenemos contadores reales de IA desde el backend, usamos aproximaciones
-            const messagesProcessed = stats.messagesProcessed ?? 0;
-            const commandsUsed = stats.commandsUsed ?? 0;
-
-            document.getElementById('kbFaqs').textContent = Math.max(5, Math.floor(commandsUsed / 10));
-            document.getElementById('kbConversations').textContent = Math.max(10, Math.floor(messagesProcessed / 20));
-
-            const usagePercent = Math.min(100, Math.max(5, Math.round((commandsUsed + messagesProcessed) / 50)));
-            document.getElementById('kbUsage').textContent = usagePercent + '%';
+            document.getElementById('kbFaqCount').textContent = stats.faqCount || 0;
+            document.getElementById('kbResponses').textContent = stats.kbResponses || 0;
+            document.getElementById('gptResponses').textContent = stats.gptResponses || 0;
+            document.getElementById('kbPercentage').textContent = stats.kbPercentage + '%';
         } catch (e) {
-            console.error('Error cargando stats de IA:', e);
-            document.getElementById('kbFaqs').textContent = '-';
-            document.getElementById('kbConversations').textContent = '-';
-            document.getElementById('kbUsage').textContent = '-';
+            console.error('Error cargando estadísticas de IA:', e);
+            document.getElementById('kbFaqCount').textContent = '-';
+            document.getElementById('kbResponses').textContent = '-';
+            document.getElementById('gptResponses').textContent = '-';
+            document.getElementById('kbPercentage').textContent = '-';
         }
     }
 
-    document.addEventListener('DOMContentLoaded', loadKnowledgeStats);
+    async function loadFaqs() {
+        try {
+            const res = await fetch('/api/guild/' + guildId + '/knowledge/faqs');
+            if (!res.ok) throw new Error('HTTP ' + res.status);
+            const data = await res.json();
+
+            const faqsList = document.getElementById('faqsList');
+
+            if (!data.faqs || data.faqs.length === 0) {
+                faqsList.innerHTML = '<div class="text-center py-4 text-muted">' +
+                    '<i class="fas fa-inbox fa-3x mb-3"></i>' +
+                    '<p>No hay FAQs en la base de conocimiento todavía.</p>' +
+                    '<p>Haz clic en "Agregar FAQ" para comenzar.</p>' +
+                    '</div>';
+                return;
+            }
+
+            let html = '<div class="list-group">';
+            data.faqs.forEach((faq, index) => {
+                const keywords = Array.isArray(faq.keywords) ? faq.keywords.join(', ') : '';
+                html += '<div class="list-group-item">' +
+                    '<div class="d-flex justify-content-between align-items-start">' +
+                    '<div class="flex-grow-1">' +
+                    '<h6 class="mb-2">' +
+                    '<span class="badge bg-primary me-2">#' + (index + 1) + '</span>' +
+                    '<small class="text-muted">Palabras clave:</small> ' + keywords +
+                    '</h6>' +
+                    '<p class="mb-0 text-muted">' + faq.answer + '</p>' +
+                    '</div>' +
+                    '<div class="btn-group ms-3">' +
+                    '<button class="btn btn-sm btn-outline-primary" onclick="editFaq(' + index + ')">' +
+                    '<i class="fas fa-edit"></i>' +
+                    '</button>' +
+                    '<button class="btn btn-sm btn-outline-danger" onclick="deleteFaq(' + index + ')">' +
+                    '<i class="fas fa-trash"></i>' +
+                    '</button>' +
+                    '</div>' +
+                    '</div>' +
+                    '</div>';
+            });
+            html += '</div>';
+
+            faqsList.innerHTML = html;
+        } catch (e) {
+            console.error('Error cargando FAQs:', e);
+            document.getElementById('faqsList').innerHTML = 
+                '<div class="alert alert-danger">' +
+                'Error cargando las FAQs. Por favor, recarga la página.' +
+                '</div>';
+        }
+    }
+
+    function showAddFaqModal() {
+        currentEditIndex = null;
+        document.getElementById('faqModalTitle').textContent = 'Agregar FAQ';
+        document.getElementById('faqKeywords').value = '';
+        document.getElementById('faqAnswer').value = '';
+        document.getElementById('faqError').classList.add('d-none');
+        faqModal.show();
+    }
+
+    async function editFaq(index) {
+        try {
+            const res = await fetch('/api/guild/' + guildId + '/knowledge/faqs');
+            if (!res.ok) throw new Error('HTTP ' + res.status);
+            const data = await res.json();
+
+            const faq = data.faqs[index];
+            if (!faq) return;
+
+            currentEditIndex = index;
+            document.getElementById('faqModalTitle').textContent = 'Editar FAQ';
+            document.getElementById('faqKeywords').value = Array.isArray(faq.keywords) ? faq.keywords.join(', ') : '';
+            document.getElementById('faqAnswer').value = faq.answer || '';
+            document.getElementById('faqError').classList.add('d-none');
+            faqModal.show();
+        } catch (e) {
+            console.error('Error cargando FAQ para editar:', e);
+            alert('Error cargando la FAQ');
+        }
+    }
+
+    async function saveFaq() {
+        const keywordsInput = document.getElementById('faqKeywords').value.trim();
+        const answer = document.getElementById('faqAnswer').value.trim();
+        const errorDiv = document.getElementById('faqError');
+
+        if (!keywordsInput) {
+            errorDiv.textContent = 'Las palabras clave son obligatorias';
+            errorDiv.classList.remove('d-none');
+            return;
+        }
+
+        if (!answer) {
+            errorDiv.textContent = 'La respuesta es obligatoria';
+            errorDiv.classList.remove('d-none');
+            return;
+        }
+
+        const keywords = keywordsInput.split(',').map(k => k.trim()).filter(k => k);
+
+        if (keywords.length === 0) {
+            errorDiv.textContent = 'Debes proporcionar al menos una palabra clave';
+            errorDiv.classList.remove('d-none');
+            return;
+        }
+
+        try {
+            let res;
+            if (currentEditIndex !== null) {
+                // Editar
+                res = await fetch('/api/guild/' + guildId + '/knowledge/faqs/' + currentEditIndex, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ keywords, answer })
+                });
+            } else {
+                // Agregar
+                res = await fetch('/api/guild/' + guildId + '/knowledge/faqs', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ keywords, answer })
+                });
+            }
+
+            if (!res.ok) {
+                const error = await res.json();
+                throw new Error(error.error || 'Error guardando FAQ');
+            }
+
+            faqModal.hide();
+            loadFaqs();
+            loadKnowledgeStats();
+        } catch (e) {
+            console.error('Error guardando FAQ:', e);
+            errorDiv.textContent = e.message;
+            errorDiv.classList.remove('d-none');
+        }
+    }
+
+    async function deleteFaq(index) {
+        if (!confirm('¿Estás seguro de que quieres eliminar esta FAQ?')) {
+            return;
+        }
+
+        try {
+            const res = await fetch('/api/guild/' + guildId + '/knowledge/faqs/' + index, {
+                method: 'DELETE'
+            });
+
+            if (!res.ok) {
+                const error = await res.json();
+                throw new Error(error.error || 'Error eliminando FAQ');
+            }
+
+            loadFaqs();
+            loadKnowledgeStats();
+        } catch (e) {
+            console.error('Error eliminando FAQ:', e);
+            alert('Error eliminando la FAQ: ' + e.message);
+        }
+    }
 </script>
 ` }) %>
