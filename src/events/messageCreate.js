@@ -147,14 +147,6 @@ async function handleGPTResponse(message) {
     // Crear embed con la respuesta
     const embed = new EmbedBuilder()
       .setColor('#5865F2') // Color azul de Discord
-      .setAuthor({
-        name: message.client.user.username,
-        iconURL: message.client.user.displayAvatarURL()
-      })
-      .setFooter({
-        text: `Respondiendo a ${message.author.username}`,
-        iconURL: message.author.displayAvatarURL()
-      })
       .setTimestamp();
     
     // Dividir respuesta si es muy larga (límite de 4096 caracteres para description)
@@ -166,18 +158,7 @@ async function handleGPTResponse(message) {
         const chunkEmbed = new EmbedBuilder()
           .setColor('#5865F2')
           .setDescription(chunks[i])
-          .setFooter({
-            text: `Respondiendo a ${message.author.username} • Parte ${i + 1}/${chunks.length}`,
-            iconURL: message.author.displayAvatarURL()
-          })
           .setTimestamp();
-        
-        if (i === 0) {
-          chunkEmbed.setAuthor({
-            name: message.client.user.username,
-            iconURL: message.client.user.displayAvatarURL()
-          });
-        }
         
         await message.reply({ embeds: [chunkEmbed] });
       }
@@ -256,8 +237,7 @@ async function handleLeveling(message) {
     const embed = new EmbedBuilder()
       .setColor('#FFD700')
       .setTitle('🎉 ¡Nivel Subido!')
-      .setDescription(`${message.author} ha alcanzado el **Nivel ${result.user.level}**!`)
-      .setThumbnail(message.author.displayAvatarURL({ dynamic: true }))
+      .setDescription(`Has alcanzado el **Nivel ${result.user.level}**!`)
       .setTimestamp();
     
     await message.channel.send({ embeds: [embed] });
@@ -280,8 +260,7 @@ async function handleLeveling(message) {
       const embed = new EmbedBuilder()
         .setColor('#FFD700')
         .setTitle('🎉 ¡Nivel Subido!')
-        .setDescription(`${message.author} ha alcanzado el **Nivel ${userData.level}**!`)
-        .setThumbnail(message.author.displayAvatarURL({ dynamic: true }))
+        .setDescription(`Has alcanzado el **Nivel ${userData.level}**!`)
         .setTimestamp();
       
       await message.channel.send({ embeds: [embed] });
