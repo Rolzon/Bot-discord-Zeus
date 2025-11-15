@@ -137,6 +137,10 @@ router.get('/:guildId/ticket/:ticketId', ensureGuildAdmin, async (req, res) => {
         embeds: msg.embeds.length > 0
       }));
 
+    // Obtener información adicional de la base de datos
+    const Ticket = (await import('../../src/database/models/Ticket.js')).default;
+    const ticketData = await Ticket.findOne({ channelId: ticketId });
+
     // Información del ticket adaptada a lo que espera la vista
     const creatorMessage = messageHistory.find(m => !m.author.bot) || messageHistory[0];
     const ticketInfo = {
@@ -172,8 +176,10 @@ router.get('/:guildId/ticket/:ticketId', ensureGuildAdmin, async (req, res) => {
         avatar: member.user.displayAvatarURL(),
         joinedAt: member.joinedAt
       })),
-      claimedBy: null,
-      closedAt: null
+      claimedBy: ticketData?.claimedBy || null,
+      closedAt: ticketData?.closedAt || null,
+      notes: ticketData?.notes || [],
+      transfers: ticketData?.transfers || []
     };
 
     res.render('tickets/view', {
@@ -379,6 +385,299 @@ router.post('/:guildId/ticket/:ticketId/message', ensureGuildAdmin, async (req, 
   } catch (error) {
     console.error('Error enviando mensaje:', error);
     res.status(500).json({ error: 'Error enviando mensaje' });
+  }
+});
+
+// Reclamar ticket
+router.post('/:guildId/ticket/:ticketId/claim', ensureGuildAdmin, async (req, res) => {
+  try {
+    const guild = req.guild;
+    const ticketId = req.params.ticketId;
+    
+    const ticketChannel = guild.channels.cache.get(ticketId);
+    if (!ticketChannel || !ticketChannel.name.startsWith('ticket-')) {
+      return res.status(404).json({ error: 'Ticket no encontrado' });
+    }
+
+    // Importar modelo de Ticket
+    const Ticket = (await import('../../src/database/models/Ticket.js')).default;
+    
+    // Actualizar en base de datos
+    const ticket = await Ticket.findOne({ channelId: ticketId });
+    if (ticket) {
+      ticket.claimedBy = {
+        userId: req.user.id,
+        username: req.user.username,
+        avatar: `https://cdn.discordapp.com/avatars/${req.user.id}/${req.user.avatar}.png`,
+        claimedAt: new Date()
+      };
+      await ticket.save();
+    }
+
+    // Enviar mensaje en el canal
+    await ticketChannel.send({
+      embeds: [{
+        title: '✋ Ticket Reclamado',
+        description: `Este ticket ha sido reclamado por **${req.user.username}** desde el dashboard.`,
+        color: 0x5865f2,
+        timestamp: new Date().toISOString()
+      }]
+    });
+
+    // Emitir evento en tiempo real
+    io.to(`guild-${guild.id}`).emit('ticket-claimed', {
+      ticketId: ticketId,
+      claimedBy: {
+        userId: req.user.id,
+        username: req.user.username,
+        avatar: `https://cdn.discordapp.com/avatars/${req.user.id}/${req.user.avatar}.png`
+      }
+    });
+
+    res.json({ 
+      success: true, 
+      message: 'Ticket reclamado exitosamente',
+      claimedBy: req.user.username
+    });
+  } catch (error) {
+    console.error('Error reclamando ticket:', error);
+    res.status(500).json({ error: 'Error reclamando ticket' });
+  }
+});
+
+// Añadir nota al ticket
+router.post('/:guildId/ticket/:ticketId/note', ensureGuildAdmin, async (req, res) => {
+  try {
+    const guild = req.guild;
+    const ticketId = req.params.ticketId;
+    const content = req.body.content;
+    
+    if (!content || content.trim().length === 0) {
+      return res.status(400).json({ error: 'La nota no puede estar vacía' });
+    }
+
+    const ticketChannel = guild.channels.cache.get(ticketId);
+    if (!ticketChannel || !ticketChannel.name.startsWith('ticket-')) {
+      return res.status(404).json({ error: 'Ticket no encontrado' });
+    }
+
+    // Importar modelo de Ticket
+    const Ticket = (await import('../../src/database/models/Ticket.js')).default;
+    
+    // Guardar nota en base de datos
+    const ticket = await Ticket.findOne({ channelId: ticketId });
+    if (ticket) {
+      ticket.notes.push({
+        userId: req.user.id,
+        username: req.user.username,
+        content: content,
+        timestamp: new Date()
+      });
+      await ticket.save();
+    }
+
+    // Enviar mensaje en el canal (solo visible para staff)
+    await ticketChannel.send({
+      embeds: [{
+        title: '📝 Nota Interna Añadida',
+        description: content,
+        color: 0xffa500,
+        author: {
+          name: `${req.user.username} (Staff)`,
+          icon_url: `https://cdn.discordapp.com/avatars/${req.user.id}/${req.user.avatar}.png`
+        },
+        footer: {
+          text: 'Esta es una nota interna visible solo para el staff'
+        },
+        timestamp: new Date().toISOString()
+      }]
+    });
+
+    // Emitir evento en tiempo real
+    io.to(`guild-${guild.id}`).emit('ticket-note-added', {
+      ticketId: ticketId,
+      note: {
+        userId: req.user.id,
+        username: req.user.username,
+        content: content,
+        timestamp: new Date()
+      }
+    });
+
+    res.json({ 
+      success: true, 
+      message: 'Nota añadida exitosamente'
+    });
+  } catch (error) {
+    console.error('Error añadiendo nota:', error);
+    res.status(500).json({ error: 'Error añadiendo nota' });
+  }
+});
+
+// Transferir ticket
+router.post('/:guildId/ticket/:ticketId/transfer', ensureGuildAdmin, async (req, res) => {
+  try {
+    const guild = req.guild;
+    const ticketId = req.params.ticketId;
+    const { targetUserId, reason } = req.body;
+    
+    if (!targetUserId) {
+      return res.status(400).json({ error: 'Debe especificar un usuario destino' });
+    }
+
+    const ticketChannel = guild.channels.cache.get(ticketId);
+    if (!ticketChannel || !ticketChannel.name.startsWith('ticket-')) {
+      return res.status(404).json({ error: 'Ticket no encontrado' });
+    }
+
+    // Obtener información del usuario destino
+    const targetMember = await guild.members.fetch(targetUserId).catch(() => null);
+    if (!targetMember) {
+      return res.status(404).json({ error: 'Usuario destino no encontrado' });
+    }
+
+    // Importar modelo de Ticket
+    const Ticket = (await import('../../src/database/models/Ticket.js')).default;
+    
+    // Actualizar en base de datos
+    const ticket = await Ticket.findOne({ channelId: ticketId });
+    if (ticket) {
+      ticket.transfers.push({
+        fromUserId: req.user.id,
+        fromUsername: req.user.username,
+        toUserId: targetUserId,
+        toUsername: targetMember.user.username,
+        reason: reason || 'Sin razón especificada',
+        timestamp: new Date()
+      });
+      
+      // Actualizar reclamación si existe
+      if (ticket.claimedBy) {
+        ticket.claimedBy = {
+          userId: targetUserId,
+          username: targetMember.user.username,
+          avatar: targetMember.user.displayAvatarURL(),
+          claimedAt: new Date()
+        };
+      }
+      
+      await ticket.save();
+    }
+
+    // Dar permisos al nuevo usuario
+    await ticketChannel.permissionOverwrites.create(targetUserId, {
+      ViewChannel: true,
+      SendMessages: true,
+      ReadMessageHistory: true
+    });
+
+    // Enviar mensaje en el canal
+    await ticketChannel.send({
+      embeds: [{
+        title: '🔄 Ticket Transferido',
+        description: `Este ticket ha sido transferido de **${req.user.username}** a **${targetMember.user.username}**.\n**Razón:** ${reason || 'Sin razón especificada'}`,
+        color: 0xffa500,
+        timestamp: new Date().toISOString()
+      }]
+    });
+
+    // Emitir evento en tiempo real
+    io.to(`guild-${guild.id}`).emit('ticket-transferred', {
+      ticketId: ticketId,
+      from: req.user.username,
+      to: targetMember.user.username,
+      reason: reason
+    });
+
+    res.json({ 
+      success: true, 
+      message: 'Ticket transferido exitosamente',
+      transferredTo: targetMember.user.username
+    });
+  } catch (error) {
+    console.error('Error transfiriendo ticket:', error);
+    res.status(500).json({ error: 'Error transfiriendo ticket' });
+  }
+});
+
+// Obtener información del usuario del ticket
+router.get('/:guildId/ticket/:ticketId/user-info', ensureGuildAdmin, async (req, res) => {
+  try {
+    const guild = req.guild;
+    const ticketId = req.params.ticketId;
+    
+    const ticketChannel = guild.channels.cache.get(ticketId);
+    if (!ticketChannel || !ticketChannel.name.startsWith('ticket-')) {
+      return res.status(404).json({ error: 'Ticket no encontrado' });
+    }
+
+    // Importar modelo de Ticket
+    const Ticket = (await import('../../src/database/models/Ticket.js')).default;
+    const ticket = await Ticket.findOne({ channelId: ticketId });
+    
+    if (!ticket) {
+      return res.status(404).json({ error: 'Información del ticket no encontrada' });
+    }
+
+    // Obtener información del usuario
+    const member = await guild.members.fetch(ticket.userId).catch(() => null);
+    
+    if (!member) {
+      return res.json({
+        userId: ticket.userId,
+        username: ticket.username,
+        avatar: null,
+        joinedAt: null,
+        roles: [],
+        status: 'Usuario no encontrado en el servidor'
+      });
+    }
+
+    // Obtener tickets previos del usuario
+    const userTickets = await Ticket.find({ 
+      guildId: guild.id, 
+      userId: ticket.userId 
+    }).sort({ createdAt: -1 });
+
+    const userInfo = {
+      userId: member.id,
+      username: member.user.tag,
+      avatar: member.user.displayAvatarURL(),
+      joinedAt: member.joinedAt,
+      accountCreated: member.user.createdAt,
+      roles: member.roles.cache
+        .filter(role => role.id !== guild.id)
+        .map(role => ({
+          id: role.id,
+          name: role.name,
+          color: role.hexColor
+        })),
+      ticketHistory: {
+        total: userTickets.length,
+        open: userTickets.filter(t => t.status === 'open').length,
+        closed: userTickets.filter(t => t.status === 'closed').length,
+        recent: userTickets.slice(0, 5).map(t => ({
+          id: t.channelId,
+          number: t.ticketNumber,
+          category: t.category,
+          status: t.status,
+          createdAt: t.createdAt,
+          closedAt: t.closedAt
+        }))
+      },
+      currentTicket: {
+        number: ticket.ticketNumber,
+        category: ticket.category,
+        createdAt: ticket.createdAt,
+        messageCount: ticket.messages.length,
+        notes: ticket.notes.length
+      }
+    };
+
+    res.json(userInfo);
+  } catch (error) {
+    console.error('Error obteniendo información del usuario:', error);
+    res.status(500).json({ error: 'Error obteniendo información del usuario' });
   }
 });
 

@@ -184,8 +184,10 @@
             <div class="card-body">
                 <div class="d-grid gap-2">
                     ${ticket.status === 'open' ? `
-                        <button class="btn btn-outline-primary btn-sm" onclick="claimTicket()">
-                            <i class="fas fa-hand-paper me-1"></i>Reclamar Ticket
+                        <button class="btn btn-outline-primary btn-sm ${ticket.claimedBy ? 'disabled' : ''}" 
+                                onclick="claimTicket()" ${ticket.claimedBy ? 'disabled' : ''}>
+                            <i class="fas fa-hand-paper me-1"></i>
+                            ${ticket.claimedBy ? 'Ya Reclamado' : 'Reclamar Ticket'}
                         </button>
                     ` : ''}
                     <button class="btn btn-outline-info btn-sm" onclick="addNote()">
@@ -275,6 +277,26 @@
     socket.on('ticket-status-changed', (data) => {
         if (data.ticketId === ticketId) {
             location.reload(); // Recargar para mostrar nuevo estado
+        }
+    });
+    
+    socket.on('ticket-claimed', (data) => {
+        if (data.ticketId === ticketId) {
+            showNotification('Ticket reclamado por ' + data.claimedBy.username, 'info');
+            setTimeout(() => location.reload(), 1000);
+        }
+    });
+    
+    socket.on('ticket-note-added', (data) => {
+        if (data.ticketId === ticketId) {
+            showNotification('Nueva nota añadida por ' + data.note.username, 'info');
+        }
+    });
+    
+    socket.on('ticket-transferred', (data) => {
+        if (data.ticketId === ticketId) {
+            showNotification('Ticket transferido de ' + data.from + ' a ' + data.to, 'info');
+            setTimeout(() => location.reload(), 1000);
         }
     });
     
@@ -399,23 +421,197 @@
         window.open('/tickets/' + guildId + '/ticket/' + ticketId + '/transcript', '_blank');
     }
     
-    function claimTicket() {
-        showNotification('Función de reclamar ticket en desarrollo', 'info');
-    }
-    
-    function addNote() {
-        const note = prompt('Añadir nota interna (solo visible para staff):');
-        if (note) {
-            showNotification('Función de notas en desarrollo', 'info');
+    async function claimTicket() {
+        if (!confirm('¿Deseas reclamar este ticket? Serás asignado como responsable.')) return;
+        
+        try {
+            const response = await fetch('/tickets/' + guildId + '/ticket/' + ticketId + '/claim', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' }
+            });
+            
+            if (response.ok) {
+                const data = await response.json();
+                showNotification('Ticket reclamado exitosamente por ' + data.claimedBy, 'success');
+                setTimeout(() => location.reload(), 1000);
+            } else {
+                const error = await response.json();
+                showNotification('Error: ' + error.error, 'danger');
+            }
+        } catch (error) {
+            showNotification('Error reclamando ticket', 'danger');
         }
     }
     
-    function transferTicket() {
-        showNotification('Función de transferir ticket en desarrollo', 'info');
+    async function addNote() {
+        const note = prompt('Añadir nota interna (solo visible para staff):');
+        if (!note || note.trim().length === 0) return;
+        
+        try {
+            const response = await fetch('/tickets/' + guildId + '/ticket/' + ticketId + '/note', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ content: note })
+            });
+            
+            if (response.ok) {
+                showNotification('Nota añadida exitosamente', 'success');
+                setTimeout(() => location.reload(), 1000);
+            } else {
+                const error = await response.json();
+                showNotification('Error: ' + error.error, 'danger');
+            }
+        } catch (error) {
+            showNotification('Error añadiendo nota', 'danger');
+        }
     }
     
-    function viewUserInfo() {
-        showNotification('Función de info de usuario en desarrollo', 'info');
+    async function transferTicket() {
+        const targetUserId = prompt('Ingresa el ID del usuario al que deseas transferir el ticket:');
+        if (!targetUserId || targetUserId.trim().length === 0) return;
+        
+        const reason = prompt('Razón de la transferencia (opcional):') || 'Sin razón especificada';
+        
+        try {
+            const response = await fetch('/tickets/' + guildId + '/ticket/' + ticketId + '/transfer', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ 
+                    targetUserId: targetUserId.trim(),
+                    reason: reason 
+                })
+            });
+            
+            if (response.ok) {
+                const data = await response.json();
+                showNotification('Ticket transferido exitosamente a ' + data.transferredTo, 'success');
+                setTimeout(() => location.reload(), 1000);
+            } else {
+                const error = await response.json();
+                showNotification('Error: ' + error.error, 'danger');
+            }
+        } catch (error) {
+            showNotification('Error transfiriendo ticket', 'danger');
+        }
+    }
+    
+    async function viewUserInfo() {
+        try {
+            const response = await fetch('/tickets/' + guildId + '/ticket/' + ticketId + '/user-info');
+            
+            if (response.ok) {
+                const userInfo = await response.json();
+                showUserInfoModal(userInfo);
+            } else {
+                const error = await response.json();
+                showNotification('Error: ' + error.error, 'danger');
+            }
+        } catch (error) {
+            showNotification('Error obteniendo información del usuario', 'danger');
+        }
+    }
+    
+    function showUserInfoModal(userInfo) {
+        // Crear modal dinámicamente
+        const modalHtml = 
+            '<div class="modal fade" id="userInfoModal" tabindex="-1">' +
+                '<div class="modal-dialog modal-lg">' +
+                    '<div class="modal-content">' +
+                        '<div class="modal-header">' +
+                            '<h5 class="modal-title">' +
+                                '<i class="fas fa-user me-2"></i>Información del Usuario' +
+                            '</h5>' +
+                            '<button type="button" class="btn-close" data-bs-dismiss="modal"></button>' +
+                        '</div>' +
+                        '<div class="modal-body">' +
+                            '<div class="row">' +
+                                '<div class="col-md-4 text-center mb-3">' +
+                                    '<img src="' + (userInfo.avatar || 'https://cdn.discordapp.com/embed/avatars/0.png') + '" ' +
+                                         'alt="' + userInfo.username + '" class="rounded-circle mb-2" width="100" height="100">' +
+                                    '<h5>' + userInfo.username + '</h5>' +
+                                    '<p class="text-muted">' + userInfo.userId + '</p>' +
+                                '</div>' +
+                                '<div class="col-md-8">' +
+                                    '<h6 class="mb-3"><i class="fas fa-info-circle me-2"></i>Información General</h6>' +
+                                    '<div class="row mb-2">' +
+                                        '<div class="col-6"><strong>Cuenta Creada:</strong></div>' +
+                                        '<div class="col-6">' + (userInfo.accountCreated ? new Date(userInfo.accountCreated).toLocaleDateString() : 'N/A') + '</div>' +
+                                    '</div>' +
+                                    '<div class="row mb-2">' +
+                                        '<div class="col-6"><strong>Se Unió al Servidor:</strong></div>' +
+                                        '<div class="col-6">' + (userInfo.joinedAt ? new Date(userInfo.joinedAt).toLocaleDateString() : 'N/A') + '</div>' +
+                                    '</div>' +
+                                    '<hr>' +
+                                    '<h6 class="mb-3"><i class="fas fa-shield-alt me-2"></i>Roles</h6>' +
+                                    '<div class="mb-3">' +
+                                        (userInfo.roles && userInfo.roles.length > 0 
+                                            ? userInfo.roles.map(role => 
+                                                '<span class="badge me-1 mb-1" style="background-color: ' + role.color + '">' + role.name + '</span>'
+                                              ).join('')
+                                            : '<span class="text-muted">Sin roles</span>') +
+                                    '</div>' +
+                                    '<hr>' +
+                                    '<h6 class="mb-3"><i class="fas fa-ticket-alt me-2"></i>Historial de Tickets</h6>' +
+                                    (userInfo.ticketHistory ? 
+                                        '<div class="row text-center mb-3">' +
+                                            '<div class="col-4">' +
+                                                '<div class="fw-bold text-primary">' + userInfo.ticketHistory.total + '</div>' +
+                                                '<small class="text-muted">Total</small>' +
+                                            '</div>' +
+                                            '<div class="col-4">' +
+                                                '<div class="fw-bold text-success">' + userInfo.ticketHistory.open + '</div>' +
+                                                '<small class="text-muted">Abiertos</small>' +
+                                            '</div>' +
+                                            '<div class="col-4">' +
+                                                '<div class="fw-bold text-secondary">' + userInfo.ticketHistory.closed + '</div>' +
+                                                '<small class="text-muted">Cerrados</small>' +
+                                            '</div>' +
+                                        '</div>' +
+                                        (userInfo.ticketHistory.recent && userInfo.ticketHistory.recent.length > 0 ?
+                                            '<div class="list-group">' +
+                                                userInfo.ticketHistory.recent.map(t => 
+                                                    '<div class="list-group-item">' +
+                                                        '<div class="d-flex justify-content-between align-items-center">' +
+                                                            '<div>' +
+                                                                '<strong>Ticket #' + t.number + '</strong> ' +
+                                                                '<span class="badge bg-' + (t.status === 'open' ? 'success' : 'secondary') + '">' + t.status + '</span>' +
+                                                            '</div>' +
+                                                            '<small class="text-muted">' + new Date(t.createdAt).toLocaleDateString() + '</small>' +
+                                                        '</div>' +
+                                                        '<small class="text-muted">' + (t.category || 'General') + '</small>' +
+                                                    '</div>'
+                                                ).join('') +
+                                            '</div>'
+                                            : '<p class="text-muted">No hay tickets recientes</p>'
+                                        )
+                                        : '<p class="text-muted">No hay información de historial</p>') +
+                                '</div>' +
+                            '</div>' +
+                        '</div>' +
+                        '<div class="modal-footer">' +
+                            '<button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cerrar</button>' +
+                        '</div>' +
+                    '</div>' +
+                '</div>' +
+            '</div>';
+        
+        // Remover modal anterior si existe
+        const existingModal = document.getElementById('userInfoModal');
+        if (existingModal) {
+            existingModal.remove();
+        }
+        
+        // Añadir modal al DOM
+        document.body.insertAdjacentHTML('beforeend', modalHtml);
+        
+        // Mostrar modal
+        const modal = new bootstrap.Modal(document.getElementById('userInfoModal'));
+        modal.show();
+        
+        // Limpiar modal al cerrar
+        document.getElementById('userInfoModal').addEventListener('hidden.bs.modal', function() {
+            this.remove();
+        });
     }
     
     function refreshMessages() {

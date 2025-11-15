@@ -31,6 +31,38 @@ const ticketSchema = new mongoose.Schema({
   closedBy: String,
   closedAt: Date,
   
+  // Reclamación del ticket
+  claimedBy: {
+    userId: String,
+    username: String,
+    avatar: String,
+    claimedAt: Date
+  },
+  
+  // Notas internas (solo visible para staff)
+  notes: [{
+    userId: String,
+    username: String,
+    content: String,
+    timestamp: {
+      type: Date,
+      default: Date.now
+    }
+  }],
+  
+  // Historial de transferencias
+  transfers: [{
+    fromUserId: String,
+    fromUsername: String,
+    toUserId: String,
+    toUsername: String,
+    reason: String,
+    timestamp: {
+      type: Date,
+      default: Date.now
+    }
+  }],
+  
   // Mensajes del ticket
   messages: [{
     userId: String,
