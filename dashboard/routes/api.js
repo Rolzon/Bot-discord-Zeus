@@ -197,6 +197,64 @@ router.get('/guild/:guildId/roles', ensureGuildAdmin, async (req, res) => {
   }
 });
 
+// Obtener canales con información de si ChatGPT está pausado
+router.get('/guild/:guildId/gpt-channels', ensureGuildAdmin, async (req, res) => {
+  try {
+    const guild = req.guild;
+    const data = await loadBotData();
+    const pausedSet = new Set(data.gptPausedChannels || []);
+
+    const channels = Array.from(guild.channels.cache.values())
+      .filter(c => c.type === 0) // solo texto
+      .sort((a, b) => a.position - b.position)
+      .map(channel => ({
+        id: channel.id,
+        name: channel.name,
+        paused: pausedSet.has(channel.id)
+      }));
+
+    res.json(channels);
+  } catch (error) {
+    console.error('Error obteniendo canales GPT:', error);
+    res.status(500).json({ error: 'Error obteniendo canales para ChatGPT' });
+  }
+});
+
+// Actualizar estado pausado/activo de ChatGPT en un canal
+router.post('/guild/:guildId/gpt-channels/:channelId', ensureGuildAdmin, async (req, res) => {
+  try {
+    const guild = req.guild;
+    const channelId = req.params.channelId;
+    const { paused } = req.body;
+
+    const channel = guild.channels.cache.get(channelId);
+    if (!channel || channel.type !== 0) {
+      return res.status(404).json({ error: 'Canal de texto no encontrado' });
+    }
+
+    const data = await loadBotData();
+    const pausedSet = new Set(data.gptPausedChannels || []);
+
+    if (paused) {
+      pausedSet.add(channelId);
+    } else {
+      pausedSet.delete(channelId);
+    }
+
+    data.gptPausedChannels = Array.from(pausedSet);
+    await saveBotData(data);
+
+    res.json({
+      success: true,
+      channelId,
+      paused: paused === true
+    });
+  } catch (error) {
+    console.error('Error actualizando canal GPT:', error);
+    res.status(500).json({ error: 'Error actualizando estado de ChatGPT en el canal' });
+  }
+});
+
 // Ejecutar comando de moderación
 router.post('/guild/:guildId/moderation/:action', ensureGuildAdmin, async (req, res) => {
   try {
