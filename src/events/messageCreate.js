@@ -17,10 +17,9 @@ const conversationHistory = new Map();
 const MAX_HISTORY = 10;
 
 // Preguntas pendientes cuando el bot se salta una respuesta por rol/"reply"
-// Map<messageId, { message, createdAt, timeoutId }>
+// Map<messageId, { message, createdAt }>
 const pendingQuestions = new Map();
-const PENDING_TIMEOUT_MINUTES = parseInt(process.env.CHATGPT_PENDING_TIMEOUT_MINUTES) || 5;
-const PENDING_TIMEOUT_MS = PENDING_TIMEOUT_MINUTES * 60 * 1000;
+const PENDING_TIMEOUT_MS = 5 * 60 * 1000; // 5 minutos
 
 // Rol que hace que el bot no responda con GPT si la persona está respondiendo a otro usuario
 const CHATGPT_IGNORE_ROLE_ID = process.env.CHATGPT_IGNORE_ROLE_ID || null;
@@ -85,32 +84,21 @@ async function handleGPTResponse(message) {
       if (hasIgnoreRole && message.reference) {
         const referenced = await message.fetchReference().catch(() => null);
         if (referenced && !referenced.author.bot) {
-          // Si el usuario con el rol responde de nuevo en el mismo hilo, cancelar pregunta pendiente
-          const referencedId = referenced.id;
-          if (pendingQuestions.has(referencedId)) {
-            const pending = pendingQuestions.get(referencedId);
-            clearTimeout(pending.timeoutId);
-            pendingQuestions.delete(referencedId);
-            console.log(`✅ Pregunta pendiente ${referencedId} cancelada (usuario con rol respondió)`);
-          }
-
           // Guardar como pregunta pendiente y salir por ahora
-          const timeoutId = setTimeout(async () => {
+          pendingQuestions.set(message.id, {
+            message,
+            createdAt: Date.now()
+          });
+
+          setTimeout(async () => {
             const pending = pendingQuestions.get(message.id);
             if (!pending) return; // ya fue procesada o cancelada
 
             // Vuelve a intentar responder con GPT usando el mensaje original
             pendingQuestions.delete(message.id);
-            console.log(`⏰ Respondiendo pregunta pendiente ${message.id} tras ${PENDING_TIMEOUT_MINUTES} minutos`);
             await handleGPTResponse(pending.message);
           }, PENDING_TIMEOUT_MS);
 
-          pendingQuestions.set(message.id, {
-            message,
-            createdAt: Date.now(),
-            timeoutId
-          });
-          console.log(`⏳ Pregunta ${message.id} en espera por ${PENDING_TIMEOUT_MINUTES} minutos`);
           return; // no responder inmediatamente
         }
       }
