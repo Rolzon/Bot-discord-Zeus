@@ -1,13 +1,7 @@
 import express from 'express';
 import { dashboardClient, io } from '../server.js';
-import { readFile, writeFile } from 'fs/promises';
-import { fileURLToPath } from 'url';
-import { dirname, join } from 'path';
 
 const router = express.Router();
-
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = dirname(__filename);
 
 // Middleware para verificar permisos de administrador
 async function ensureGuildAdmin(req, res, next) {
@@ -60,33 +54,6 @@ router.get('/guild/:guildId/info', ensureGuildAdmin, async (req, res) => {
     res.status(500).json({ error: 'Error obteniendo información del servidor' });
   }
 });
-
-// Utilidades para botdata compartido (estado de ChatGPT pausado por canal)
-async function loadBotData() {
-  try {
-    const dataPath = join(dirname(dirname(__dirname)), 'data', 'botdata.json');
-    const raw = await readFile(dataPath, 'utf-8');
-    return JSON.parse(raw);
-  } catch (error) {
-    return {
-      warnings: [],
-      mutes: [],
-      tickets: [],
-      giveaways: [],
-      levels: [],
-      gptPausedChannels: []
-    };
-  }
-}
-
-async function saveBotData(data) {
-  try {
-    const dataPath = join(dirname(dirname(__dirname)), 'data', 'botdata.json');
-    await writeFile(dataPath, JSON.stringify(data, null, 2));
-  } catch (error) {
-    console.error('Error guardando botdata desde dashboard:', error);
-  }
-}
 
 // Obtener miembros del servidor
 router.get('/guild/:guildId/members', ensureGuildAdmin, async (req, res) => {
@@ -194,64 +161,6 @@ router.get('/guild/:guildId/roles', ensureGuildAdmin, async (req, res) => {
   } catch (error) {
     console.error('Error obteniendo roles:', error);
     res.status(500).json({ error: 'Error obteniendo roles' });
-  }
-});
-
-// Obtener canales con información de si ChatGPT está pausado
-router.get('/guild/:guildId/gpt-channels', ensureGuildAdmin, async (req, res) => {
-  try {
-    const guild = req.guild;
-    const data = await loadBotData();
-    const pausedSet = new Set(data.gptPausedChannels || []);
-
-    const channels = Array.from(guild.channels.cache.values())
-      .filter(c => c.type === 0) // solo texto
-      .sort((a, b) => a.position - b.position)
-      .map(channel => ({
-        id: channel.id,
-        name: channel.name,
-        paused: pausedSet.has(channel.id)
-      }));
-
-    res.json(channels);
-  } catch (error) {
-    console.error('Error obteniendo canales GPT:', error);
-    res.status(500).json({ error: 'Error obteniendo canales para ChatGPT' });
-  }
-});
-
-// Actualizar estado pausado/activo de ChatGPT en un canal
-router.post('/guild/:guildId/gpt-channels/:channelId', ensureGuildAdmin, async (req, res) => {
-  try {
-    const guild = req.guild;
-    const channelId = req.params.channelId;
-    const { paused } = req.body;
-
-    const channel = guild.channels.cache.get(channelId);
-    if (!channel || channel.type !== 0) {
-      return res.status(404).json({ error: 'Canal de texto no encontrado' });
-    }
-
-    const data = await loadBotData();
-    const pausedSet = new Set(data.gptPausedChannels || []);
-
-    if (paused) {
-      pausedSet.add(channelId);
-    } else {
-      pausedSet.delete(channelId);
-    }
-
-    data.gptPausedChannels = Array.from(pausedSet);
-    await saveBotData(data);
-
-    res.json({
-      success: true,
-      channelId,
-      paused: paused === true
-    });
-  } catch (error) {
-    console.error('Error actualizando canal GPT:', error);
-    res.status(500).json({ error: 'Error actualizando estado de ChatGPT en el canal' });
   }
 });
 
