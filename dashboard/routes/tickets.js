@@ -331,9 +331,9 @@ router.post('/:guildId/ticket/:ticketId/message', ensureGuildAdmin, async (req, 
   try {
     const guild = req.guild;
     const ticketId = req.params.ticketId;
-    const message = req.body.message;
+    const content = req.body.content;
     
-    if (!message || message.trim().length === 0) {
+    if (!content || content.trim().length === 0) {
       return res.status(400).json({ error: 'Mensaje no puede estar vacío' });
     }
 
@@ -345,7 +345,7 @@ router.post('/:guildId/ticket/:ticketId/message', ensureGuildAdmin, async (req, 
     // Enviar mensaje
     const sentMessage = await ticketChannel.send({
       embeds: [{
-        description: message,
+        description: content,
         color: 0x5865f2,
         author: {
           name: `${req.user.username} (Dashboard)`,
@@ -360,9 +360,14 @@ router.post('/:guildId/ticket/:ticketId/message', ensureGuildAdmin, async (req, 
       ticketId: ticketId,
       message: {
         id: sentMessage.id,
-        content: message,
-        author: req.user.username,
-        timestamp: sentMessage.createdAt
+        content: content,
+        author: {
+          username: `${req.user.username} (Dashboard)`,
+          avatar: `https://cdn.discordapp.com/avatars/${req.user.id}/${req.user.avatar}.png`,
+          isStaff: true
+        },
+        timestamp: sentMessage.createdAt,
+        attachments: []
       }
     });
 
