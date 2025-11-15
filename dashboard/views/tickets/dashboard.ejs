@@ -230,7 +230,7 @@
                 <form id="createTicketForm">
                     <div class="mb-3">
                         <label for="ticketTitle" class="form-label">Título del Ticket</label>
-                        <input type="text" class="form-control" id="ticketTitle" required>
+                        <input type="text" class="form-control" id="ticketTitle" placeholder="Ej: Problema con permisos" required>
                     </div>
                     <div class="mb-3">
                         <label for="ticketCategory" class="form-label">Categoría</label>
@@ -239,17 +239,29 @@
                             <option value="soporte">Soporte</option>
                             <option value="reportes">Reportes</option>
                             <option value="sugerencias">Sugerencias</option>
+                            <option value="general">General</option>
                         </select>
                     </div>
                     <div class="mb-3">
                         <label for="ticketDescription" class="form-label">Descripción</label>
-                        <textarea class="form-control" id="ticketDescription" rows="3" required></textarea>
+                        <textarea class="form-control" id="ticketDescription" rows="3" placeholder="Describe el problema o consulta..." required></textarea>
                     </div>
+                    <div class="mb-3">
+                        <label for="assignToUser" class="form-label">Asignar a Usuario (Opcional)</label>
+                        <select class="form-select" id="assignToUser">
+                            <option value="">No asignar a nadie</option>
+                        </select>
+                        <small class="text-muted">Si seleccionas un usuario, se le dará acceso automáticamente al ticket</small>
+                    </div>
+                    <div id="createTicketError" class="alert alert-danger d-none" role="alert"></div>
                 </form>
             </div>
             <div class="modal-footer">
                 <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
-                <button type="button" class="btn btn-primary" onclick="createTicket()">Crear Ticket</button>
+                <button type="button" class="btn btn-primary" id="createTicketBtn" onclick="createTicket()">
+                    <span class="spinner-border spinner-border-sm d-none" id="createTicketSpinner"></span>
+                    Crear Ticket
+                </button>
             </div>
         </div>
     </div>
@@ -276,18 +288,23 @@
 `, script: `
 <script>
     // Socket.IO events for real-time updates
+    socket.on('ticket-created', (data) => {
+        showNotification('✨ Nuevo ticket creado: ' + data.ticketName, 'success');
+        refreshTickets();
+    });
+
     socket.on('ticket-closed', (data) => {
-        showNotification('Ticket cerrado: ' + data.ticketId, 'warning');
+        showNotification('🔒 Ticket cerrado: ' + data.ticketId, 'warning');
         refreshTickets();
     });
 
     socket.on('ticket-reopened', (data) => {
-        showNotification('Ticket reabierto: ' + data.ticketId, 'success');
+        showNotification('🔓 Ticket reabierto: ' + data.ticketId, 'success');
         refreshTickets();
     });
 
     socket.on('ticket-deleted', (data) => {
-        showNotification('Ticket eliminado: ' + data.ticketName, 'info');
+        showNotification('🗑️ Ticket eliminado: ' + data.ticketName, 'info');
         refreshTickets();
     });
 
@@ -397,23 +414,96 @@
         const title = document.getElementById('ticketTitle').value;
         const category = document.getElementById('ticketCategory').value;
         const description = document.getElementById('ticketDescription').value;
+        const assignToUserId = document.getElementById('assignToUser').value;
         
         if (!title || !category || !description) {
-            showNotification('Por favor completa todos los campos', 'warning');
+            showError('Por favor completa todos los campos obligatorios');
             return;
         }
         
-        // Esta función crearía un ticket manualmente desde el dashboard
-        // En una implementación real, se conectaría con la API del bot
-        showNotification('Función de crear ticket desde dashboard en desarrollo', 'info');
+        // Mostrar spinner y deshabilitar botón
+        const btn = document.getElementById('createTicketBtn');
+        const spinner = document.getElementById('createTicketSpinner');
+        btn.disabled = true;
+        spinner.classList.remove('d-none');
+        hideError();
         
-        // Cerrar modal
-        const modal = bootstrap.Modal.getInstance(document.getElementById('createTicketModal'));
-        modal.hide();
-        
-        // Limpiar formulario
-        document.getElementById('createTicketForm').reset();
+        try {
+            const response = await fetch('/tickets/${guild.id}/create', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ 
+                    title, 
+                    category, 
+                    description,
+                    assignToUserId: assignToUserId || null
+                })
+            });
+            
+            const data = await response.json();
+            
+            if (response.ok) {
+                showNotification('✅ Ticket creado exitosamente: ' + data.ticketName, 'success');
+                
+                // Cerrar modal
+                const modal = bootstrap.Modal.getInstance(document.getElementById('createTicketModal'));
+                modal.hide();
+                
+                // Limpiar formulario
+                document.getElementById('createTicketForm').reset();
+                
+                // Redirigir al ticket creado después de 1 segundo
+                setTimeout(() => {
+                    window.location.href = data.ticketUrl;
+                }, 1000);
+            } else {
+                showError(data.error || 'Error al crear el ticket');
+            }
+        } catch (error) {
+            console.error('Error creando ticket:', error);
+            showError('Error de conexión al crear el ticket');
+        } finally {
+            btn.disabled = false;
+            spinner.classList.add('d-none');
+        }
     }
+    
+    function showError(message) {
+        const errorDiv = document.getElementById('createTicketError');
+        errorDiv.textContent = message;
+        errorDiv.classList.remove('d-none');
+    }
+    
+    function hideError() {
+        const errorDiv = document.getElementById('createTicketError');
+        errorDiv.classList.add('d-none');
+    }
+    
+    // Cargar lista de miembros cuando se abre el modal
+    document.getElementById('createTicketModal').addEventListener('show.bs.modal', async function () {
+        const select = document.getElementById('assignToUser');
+        
+        // Limpiar opciones anteriores excepto la primera
+        while (select.options.length > 1) {
+            select.remove(1);
+        }
+        
+        try {
+            const response = await fetch('/tickets/${guild.id}/members');
+            if (response.ok) {
+                const members = await response.json();
+                
+                members.forEach(member => {
+                    const option = document.createElement('option');
+                    option.value = member.id;
+                    option.textContent = member.nickname || member.username;
+                    select.appendChild(option);
+                });
+            }
+        } catch (error) {
+            console.error('Error cargando miembros:', error);
+        }
+    });
 
     function refreshTickets() {
         // Recargar la página para obtener datos actualizados

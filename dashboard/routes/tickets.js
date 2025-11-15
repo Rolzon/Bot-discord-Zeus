@@ -701,6 +701,228 @@ router.get('/:guildId/ticket/:ticketId/user-info', ensureGuildAdmin, async (req,
   }
 });
 
+// Crear ticket desde el dashboard
+router.post('/:guildId/create', ensureGuildAdmin, async (req, res) => {
+  try {
+    const guild = req.guild;
+    const { title, category, description, assignToUserId } = req.body;
+    
+    if (!title || !category || !description) {
+      return res.status(400).json({ error: 'Todos los campos son requeridos' });
+    }
+
+    // Verificar si el usuario asignado existe en el servidor
+    let assignedUser = null;
+    if (assignToUserId) {
+      try {
+        assignedUser = await guild.members.fetch(assignToUserId);
+      } catch (error) {
+        return res.status(404).json({ error: 'Usuario no encontrado en el servidor' });
+      }
+    }
+
+    // Verificar si el usuario ya tiene un ticket abierto
+    if (assignedUser) {
+      const existingTicket = guild.channels.cache.find(
+        channel => channel.name === `ticket-${assignedUser.user.username.toLowerCase()}` && 
+                  channel.type === 0
+      );
+      
+      if (existingTicket) {
+        return res.status(400).json({ 
+          error: 'El usuario ya tiene un ticket abierto',
+          existingTicketId: existingTicket.id 
+        });
+      }
+    }
+
+    // Buscar o crear categoría de tickets
+    let ticketCategory = guild.channels.cache.find(
+      channel => channel.name.toLowerCase().includes('tickets') && 
+                channel.type === 4 // GuildCategory
+    );
+    
+    if (!ticketCategory) {
+      ticketCategory = await guild.channels.create({
+        name: '🎫 TICKETS',
+        type: 4,
+        permissionOverwrites: [
+          {
+            id: guild.roles.everyone.id,
+            deny: ['ViewChannel']
+          }
+        ]
+      });
+    }
+
+    // Generar nombre único para el ticket
+    const ticketName = assignedUser 
+      ? `ticket-${assignedUser.user.username.toLowerCase()}`
+      : `ticket-${Date.now()}`;
+
+    // Crear canal de ticket
+    const ticketChannel = await guild.channels.create({
+      name: ticketName,
+      type: 0, // GuildText
+      parent: ticketCategory.id,
+      topic: `${category} - ${title}`,
+      permissionOverwrites: [
+        {
+          id: guild.roles.everyone.id,
+          deny: ['ViewChannel']
+        },
+        {
+          id: guild.members.me.id,
+          allow: ['ViewChannel', 'SendMessages', 'ManageChannels']
+        }
+      ]
+    });
+
+    // Añadir permisos al usuario asignado si existe
+    if (assignedUser) {
+      await ticketChannel.permissionOverwrites.create(assignedUser.id, {
+        ViewChannel: true,
+        SendMessages: true,
+        ReadMessageHistory: true
+      });
+    }
+
+    // Añadir permisos para roles de staff
+    const staffRoles = guild.roles.cache.filter(role => 
+      role.name.toLowerCase().includes('staff') ||
+      role.name.toLowerCase().includes('mod') ||
+      role.name.toLowerCase().includes('admin') ||
+      role.permissions.has('ManageMessages')
+    );
+    
+    for (const role of staffRoles.values()) {
+      await ticketChannel.permissionOverwrites.create(role.id, {
+        ViewChannel: true,
+        SendMessages: true,
+        ReadMessageHistory: true
+      });
+    }
+
+    // Crear embed de bienvenida
+    const { EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle } = await import('discord.js');
+    
+    const welcomeEmbed = new EmbedBuilder()
+      .setTitle(`🎫 ${title}`)
+      .setDescription(description)
+      .setColor('#00ff00')
+      .addFields(
+        { name: '📂 Categoría', value: category, inline: true },
+        { name: '👤 Creado por', value: `${req.user.username} (Dashboard)`, inline: true },
+        { name: '📝 Información', value: 'Este ticket fue creado desde el dashboard web.' }
+      )
+      .setFooter({ text: `Ticket ID: ${ticketChannel.id}` })
+      .setTimestamp();
+
+    // Botones de control del ticket
+    const ticketControls = new ActionRowBuilder()
+      .addComponents(
+        new ButtonBuilder()
+          .setCustomId('ticket_close')
+          .setLabel('Cerrar Ticket')
+          .setStyle(ButtonStyle.Danger)
+          .setEmoji('🔒'),
+        new ButtonBuilder()
+          .setCustomId('ticket_claim')
+          .setLabel('Reclamar')
+          .setStyle(ButtonStyle.Primary)
+          .setEmoji('👋')
+      );
+
+    const mentionText = assignedUser 
+      ? `${assignedUser} | Staff: ${staffRoles.map(r => `<@&${r.id}>`).join(' ')}`
+      : `Staff: ${staffRoles.map(r => `<@&${r.id}>`).join(' ')}`;
+
+    await ticketChannel.send({
+      content: mentionText,
+      embeds: [welcomeEmbed],
+      components: [ticketControls]
+    });
+
+    // Guardar en base de datos
+    try {
+      const Ticket = (await import('../../src/database/models/Ticket.js')).default;
+      
+      // Obtener el siguiente número de ticket
+      const lastTicket = await Ticket.findOne({ guildId: guild.id })
+        .sort({ ticketNumber: -1 });
+      const ticketNumber = lastTicket ? lastTicket.ticketNumber + 1 : 1;
+
+      const newTicket = new Ticket({
+        channelId: ticketChannel.id,
+        guildId: guild.id,
+        userId: assignedUser ? assignedUser.id : req.user.id,
+        username: assignedUser ? assignedUser.user.username : req.user.username,
+        ticketNumber: ticketNumber,
+        category: category,
+        status: 'open',
+        notes: [{
+          userId: req.user.id,
+          username: req.user.username,
+          content: `Ticket creado desde dashboard: ${title}`,
+          timestamp: new Date()
+        }]
+      });
+
+      await newTicket.save();
+    } catch (dbError) {
+      console.log('No se pudo guardar en base de datos:', dbError.message);
+    }
+
+    // Emitir evento en tiempo real
+    io.to(`guild-${guild.id}`).emit('ticket-created', {
+      ticketId: ticketChannel.id,
+      ticketName: ticketChannel.name,
+      title: title,
+      category: category,
+      createdBy: req.user.username,
+      assignedTo: assignedUser ? assignedUser.user.username : null
+    });
+
+    res.json({ 
+      success: true, 
+      message: 'Ticket creado exitosamente',
+      ticketId: ticketChannel.id,
+      ticketName: ticketChannel.name,
+      ticketUrl: `/tickets/${guild.id}/ticket/${ticketChannel.id}`
+    });
+  } catch (error) {
+    console.error('Error creando ticket:', error);
+    res.status(500).json({ error: 'Error creando ticket: ' + error.message });
+  }
+});
+
+// Obtener lista de miembros del servidor para asignar tickets
+router.get('/:guildId/members', ensureGuildAdmin, async (req, res) => {
+  try {
+    const guild = req.guild;
+    
+    // Obtener miembros del servidor (limitado a 100 para no sobrecargar)
+    await guild.members.fetch({ limit: 100 });
+    
+    const members = guild.members.cache
+      .filter(member => !member.user.bot)
+      .map(member => ({
+        id: member.id,
+        username: member.user.username,
+        discriminator: member.user.discriminator,
+        tag: member.user.tag,
+        avatar: member.user.displayAvatarURL(),
+        nickname: member.nickname
+      }))
+      .sort((a, b) => a.username.localeCompare(b.username));
+
+    res.json(members);
+  } catch (error) {
+    console.error('Error obteniendo miembros:', error);
+    res.status(500).json({ error: 'Error obteniendo miembros del servidor' });
+  }
+});
+
 // Estadísticas de tickets
 router.get('/:guildId/stats', ensureGuildAdmin, async (req, res) => {
   try {
