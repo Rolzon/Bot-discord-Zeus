@@ -62,24 +62,63 @@ async function handleTicketCreate(interaction) {
     await interaction.deferReply({ ephemeral: true });
     
     try {
-        // Buscar categoría de tickets
-        let ticketCategory = guild.channels.cache.find(
-            channel => channel.name.toLowerCase().includes('tickets') && 
-                      channel.type === ChannelType.GuildCategory
-        );
+        // Obtener configuración del servidor
+        const Guild = (await import('../database/models/Guild.js')).default;
+        let guildConfig = await Guild.findOne({ guildId: guild.id });
         
-        // Crear categoría si no existe
-        if (!ticketCategory) {
-            ticketCategory = await guild.channels.create({
-                name: '🎫 TICKETS',
-                type: ChannelType.GuildCategory,
-                permissionOverwrites: [
-                    {
-                        id: guild.roles.everyone.id,
-                        deny: [PermissionFlagsBits.ViewChannel]
-                    }
-                ]
-            });
+        // Buscar categoría configurada o crear una por defecto
+        let ticketCategory = null;
+        
+        if (guildConfig?.settings?.tickets?.categoryId) {
+            // Usar categoría configurada
+            ticketCategory = guild.channels.cache.get(guildConfig.settings.tickets.categoryId);
+            
+            if (!ticketCategory) {
+                return await interaction.editReply({
+                    content: '❌ La categoría de tickets configurada no existe. Contacta con un administrador para que use `/ticket-config categoria` y configure una nueva.',
+                    ephemeral: true
+                });
+            }
+        } else {
+            // Buscar o crear categoría por defecto
+            ticketCategory = guild.channels.cache.find(
+                channel => channel.name.toLowerCase().includes('tickets') && 
+                          channel.type === ChannelType.GuildCategory
+            );
+            
+            if (!ticketCategory) {
+                ticketCategory = await guild.channels.create({
+                    name: '🎫 TICKETS',
+                    type: ChannelType.GuildCategory,
+                    permissionOverwrites: [
+                        {
+                            id: guild.roles.everyone.id,
+                            deny: [PermissionFlagsBits.ViewChannel]
+                        }
+                    ]
+                });
+                
+                // Guardar la categoría creada en la configuración
+                if (!guildConfig) {
+                    guildConfig = new Guild({
+                        guildId: guild.id,
+                        name: guild.name,
+                        ownerId: guild.ownerId
+                    });
+                }
+                
+                if (!guildConfig.settings) {
+                    guildConfig.settings = {};
+                }
+                
+                if (!guildConfig.settings.tickets) {
+                    guildConfig.settings.tickets = {};
+                }
+                
+                guildConfig.settings.tickets.categoryId = ticketCategory.id;
+                guildConfig.settings.tickets.categoryName = ticketCategory.name;
+                await guildConfig.save();
+            }
         }
         
         // Crear canal de ticket
@@ -111,15 +150,25 @@ async function handleTicketCreate(interaction) {
             ]
         });
         
-        // Añadir permisos para roles de staff si existen
-        const staffRoles = guild.roles.cache.filter(role => 
-            role.name.toLowerCase().includes('staff') ||
-            role.name.toLowerCase().includes('mod') ||
-            role.name.toLowerCase().includes('admin') ||
-            role.permissions.has(PermissionFlagsBits.ManageMessages)
-        );
+        // Añadir permisos para roles de soporte configurados
+        let staffRoles = [];
         
-        for (const role of staffRoles.values()) {
+        if (guildConfig?.settings?.tickets?.supportRoles && guildConfig.settings.tickets.supportRoles.length > 0) {
+            // Usar roles configurados
+            staffRoles = guildConfig.settings.tickets.supportRoles
+                .map(roleId => guild.roles.cache.get(roleId))
+                .filter(role => role !== undefined);
+        } else {
+            // Usar roles por defecto (buscar por nombre)
+            staffRoles = Array.from(guild.roles.cache.filter(role => 
+                role.name.toLowerCase().includes('staff') ||
+                role.name.toLowerCase().includes('mod') ||
+                role.name.toLowerCase().includes('admin') ||
+                role.permissions.has(PermissionFlagsBits.ManageMessages)
+            ).values());
+        }
+        
+        for (const role of staffRoles) {
             await ticketChannel.permissionOverwrites.create(role.id, {
                 ViewChannel: true,
                 SendMessages: true,

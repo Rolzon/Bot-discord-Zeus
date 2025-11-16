@@ -51,6 +51,22 @@ const guildSchema = new mongoose.Schema({
         type: Number,
         default: 5
       }
+    },
+    
+    // Sistema de Tickets
+    tickets: {
+      enabled: {
+        type: Boolean,
+        default: true
+      },
+      categoryId: String, // ID de la categoría donde se crearán los tickets
+      categoryName: String, // Nombre de la categoría (para referencia)
+      supportRoles: [String], // IDs de roles que pueden ver tickets
+      transcriptChannel: String, // Canal donde se guardan transcripciones
+      maxTicketsPerUser: {
+        type: Number,
+        default: 1
+      }
     }
   },
   
